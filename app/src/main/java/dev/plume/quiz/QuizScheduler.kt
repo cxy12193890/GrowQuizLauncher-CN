@@ -35,6 +35,7 @@ object QuizScheduler {
             alarm.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showIntent), op)
         } else {
             // Fallback to an inexact alarm when the exact-alarm permission is unavailable.
+            dev.plume.DiagLog.event("exact_alarm_denied")
             alarm.set(AlarmManager.RTC_WAKEUP, triggerAt, op)
         }
         prefs.nextTriggerAt = triggerAt

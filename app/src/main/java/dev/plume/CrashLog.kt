@@ -28,6 +28,8 @@ object CrashLog {
                     .putLong(KEY_AT, System.currentTimeMillis())
                     .putString(KEY_TRACE, "[${thread.name}]\n$w".take(MAX_CHARS))
                     .commit()
+                // The daily report carries this home; the preferences copy is for the web console.
+                DiagLog.event("crash", "[${thread.name}] $w".take(400))
             } catch (e: Exception) {
             }
             if (previous != null) {

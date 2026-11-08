@@ -30,6 +30,7 @@ object QuizVoice {
             if (status != TextToSpeech.SUCCESS) {
                 android.util.Log.w("GrowQuiz", "tts init failed: $status")
                 failure = "no-engine"
+                dev.plume.DiagLog.event("tts_init_fail", "status=$status")
                 return@TextToSpeech
             }
             configure()
@@ -46,6 +47,7 @@ object QuizVoice {
         if (!ok) {
             android.util.Log.w("GrowQuiz", "tts has no usable language")
             failure = "no-language"
+            dev.plume.DiagLog.event("tts_no_language")
             return
         }
         // A little slower than default: at full speed the four options run into each other.

@@ -388,6 +388,9 @@ class MainActivity : Activity() {
         dev.plume.quiz.QuizScheduler.ensureScheduled(this)
         dev.plume.web.WebAdminServer.start(this)
         dev.plume.quiz.TtsProbe.start(this) // the web console reports whether this TV can read aloud
+        // GrowQuiz: the daily compatibility report (device probe + fresh diagnostics) goes home from
+        // here; throttled inside, so this costs nothing on most starts.
+        ReportUpload.maybeUpload(this)
         // GrowQuiz: load the speech engine now, while the desktop is idle. On TV hardware a Chinese engine
         // takes seconds to bring its model up; doing it here means the quiz page can speak the first
         // question at once instead of leaving it silent while the engine loads.
@@ -673,6 +676,10 @@ class MainActivity : Activity() {
      * dumpsys accessibility). The Home key, the remote-key page and the watch-time count all stop,
      * silently. [ensureHomeService] cannot see it — the setting still lists the service. Rewriting the
      * setting makes the system bind it again. Runs once, after the normal bind has had a few seconds.
+     *
+     * The *detection* is brand-blind: a dead bind is reported from every TV, so the daily report
+     * shows which firmware share the disease. The *cure* (rewriting the secure setting) is verified
+     * on TCL only, so it stays behind [Vendor.isTcl] until another brand's reports prove it there.
      */
     private fun reviveHomeService() {
         if (revived || !homeServiceOn()) return
@@ -681,6 +688,9 @@ class MainActivity : Activity() {
         ui.postDelayed({
             if (isFinishing || isDestroyed) return@postDelayed
             if (HomeOverride.running != null || !homeServiceOn()) return@postDelayed
+            // Enabled in the list but not bound after several seconds: the service is dead.
+            DiagLog.event("a11y_dead", "", mapOf("vendor" to Vendor.current))
+            if (!Vendor.isTcl()) return@postDelayed // the rewrite fix is verified on TCL only
             val me = ComponentName(this, HomeOverride::class.java)
             val on = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()
             // Take ours out, then put it back: the value must change, or nothing is bound again.
@@ -692,6 +702,9 @@ class MainActivity : Activity() {
                 val parts = now.split(':').filter { it.isNotEmpty() } + me.flattenToString()
                 Settings.Secure.putString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, parts.distinct().joinToString(":"))
                 Settings.Secure.putInt(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 1)
+                ui.postDelayed({
+                    DiagLog.event(if (HomeOverride.running != null) "a11y_revived" else "a11y_revive_fail")
+                }, 3_000)
             }, 300)
         }, 3_000)
     }
@@ -5169,6 +5182,7 @@ class MainActivity : Activity() {
                 meta.getString("version").removePrefix("v")
             } catch (e: Exception) {
                 android.util.Log.w("Plume", "update check failed ($e)")
+                DiagLog.event("update_check_fail", e.message ?: e.javaClass.simpleName)
                 null
             }
             if (latest != null) prefs.edit()
@@ -5297,6 +5311,7 @@ class MainActivity : Activity() {
                 true
             } catch (e: Exception) {
                 android.util.Log.w("Plume", "update download failed ($e)")
+                DiagLog.event("update_download_fail", e.message ?: e.javaClass.simpleName)
                 apk.delete()
                 false
             }
@@ -5329,6 +5344,7 @@ class MainActivity : Activity() {
             File(cacheDir, ApkProvider.NAME).delete()
             val why = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
             android.util.Log.w("Plume", "update install failed: $status $why")
+            DiagLog.event("update_install_fail", "status=$status ${why.orEmpty()}".trim())
             if (status != PackageInstaller.STATUS_FAILURE_ABORTED) {
                 toast(getString(R.string.update_install_failed), long = true)
             }

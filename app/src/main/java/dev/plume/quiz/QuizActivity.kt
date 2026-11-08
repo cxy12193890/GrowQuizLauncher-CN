@@ -72,10 +72,22 @@ class QuizActivity : Activity() {
     private var snapPendingAt = 0L
     private var snapPrefs: QuizPrefs? = null
 
+    // GrowQuiz: consecutive comeback attempts that did not bring the page back. A few in a row mean
+    // this firmware keeps the quiz behind something else — the fact parents call "答题不在最前端".
+    private var snapMisses = 0
+    private var snapLossNoted = false
+
     private val guardLoop: Runnable = object : Runnable {
         override fun run() {
             if (isFinishing || isDestroyed || solved) return
-            if (!inForeground) comeBack()
+            if (!inForeground) {
+                comeBack()
+                if (snapPrefs?.snapBack != false && ++snapMisses == 10 && !snapLossNoted) {
+                    // Ten seconds without regaining the front: report once per episode, not per tick.
+                    snapLossNoted = true
+                    dev.plume.DiagLog.event("foreground_lost")
+                }
+            }
             ui.postDelayed(this, GUARD_POLL_MS)
         }
     }
@@ -101,6 +113,7 @@ class QuizActivity : Activity() {
             snapPendingAt = System.currentTimeMillis()
         } catch (e: Exception) {
             android.util.Log.w("GrowQuiz", "guard relaunch failed", e)
+            dev.plume.DiagLog.event("snapback_fail", e.message ?: e.javaClass.simpleName)
         }
     }
 
@@ -110,6 +123,9 @@ class QuizActivity : Activity() {
         if (started == 0L) return
         snapPendingAt = 0L
         if (System.currentTimeMillis() - started > SNAP_OK_MS) return // too late to be our doing
+        snapMisses = 0
+        snapLossNoted = false
+        dev.plume.DiagLog.event("snapback_ok")
         snapPrefs?.apply {
             snapOkAt = System.currentTimeMillis()
             snapOkCount = snapOkCount + 1
@@ -149,6 +165,9 @@ class QuizActivity : Activity() {
         // A question or a rest is open from now on: a power cut leaves this flag set, and the
         // launcher brings the page back after the next power-on (see MainActivity.onResume).
         snapPrefs?.quizActive = true
+        // GrowQuiz: pairs with the alarm's alarm_fired; a fired alarm without this event soon after
+        // means the firmware dropped the pop-up (see QuizAlarmReceiver).
+        dev.plume.DiagLog.event("quiz_open")
         ledger = QuizLedger(applicationContext)
         refreshLevel()
         if (QuizDeviceOwner.configure(this)) {
@@ -170,6 +189,7 @@ class QuizActivity : Activity() {
         if (isFinishing || ttsNoted) return
         if (!QuizPrefs(this).voice) return // narration is off anyway: no engine toast would only confuse
         ttsNoted = true
+        dev.plume.DiagLog.event("tts_missing", QuizVoice.failureReason() ?: "")
         Toast.makeText(this, "本机没有可用的语音（TTS）引擎，无法朗读题目", Toast.LENGTH_LONG).show()
     }
 

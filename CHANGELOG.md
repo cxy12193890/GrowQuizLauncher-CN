@@ -14,6 +14,12 @@ Write every entry in ASD-STE100 Simplified Technical English:
 
 Put changes that are not released under `## Unreleased`. Rename that heading to the version number when you release.
 
+## 1.14.0
+
+- **异常自动记录并每日上报。** 崩溃、开机不启动、答题不弹出、答题被压到后台、无障碍服务假死、语音缺失、更新失败都会记在本机，每天匿名上报一次，用于适配更多电视品牌。
+- **品牌专属修复只在本品牌运行。** 只在 TCL 上验证过的修复代码（无障碍服务假死重绑）只在 TCL 设备上执行，其他品牌只上报问题、不受改动影响。
+- **上报不含隐私。** 设备以随机编号标识，不采集硬件标识；不上报答题内容、成绩与观看数据。
+
 ## 1.13.2
 
 - **断电重启后自动回到宝贝成长桌面。** 电视开机先显示厂商桌面时，无障碍服务绑定后会主动接管，不再等一次窗口变化。

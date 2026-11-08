@@ -23,6 +23,7 @@ import android.view.accessibility.AccessibilityEvent
 class HomeOverride : AccessibilityService() {
     override fun onServiceConnected() {
         running = this
+        DiagLog.event("a11y_bound")
         applyKeyFilter()
         loadHomes()
         // This TV never delivers BOOT_COMPLETED to third-party receivers (TCL's boot manager holds
@@ -55,6 +56,7 @@ class HomeOverride : AccessibilityService() {
         val prefs = dev.plume.quiz.QuizPrefs(this)
         val rest = prefs.restGuard && prefs.restUntil > System.currentTimeMillis()
         if (prefs.enabled && (prefs.quizActive || rest)) {
+            DiagLog.event("boot_catchup_quiz")
             startActivity(
                 Intent(this, dev.plume.quiz.QuizActivity::class.java).addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT,
@@ -63,7 +65,10 @@ class HomeOverride : AccessibilityService() {
             return@Runnable
         }
         val front = rootInActiveWindow?.packageName?.toString() ?: return@Runnable
-        if (front != packageName && watch.coversPackage(front)) goHome()
+        if (front != packageName && watch.coversPackage(front)) {
+            DiagLog.event("boot_catchup_home", "", mapOf("front" to front))
+            goHome()
+        }
     }
 
     /**
@@ -82,6 +87,7 @@ class HomeOverride : AccessibilityService() {
     /** Turned off, from Plume's switch or Android's Accessibility settings: the app mustn't turn it back on. */
     override fun onUnbind(intent: Intent?): Boolean {
         running = null
+        DiagLog.event("a11y_unbound")
         handler.removeCallbacks(jump)
         handler.removeCallbacks(bootCatchUp)
         TvWatch.flush(this) // the watch-time bucket goes to disk before the service goes away
