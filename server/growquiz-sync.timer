@@ -1,0 +1,9 @@
+[Unit]
+Description=Run the GrowQuiz release sync every 3 hours
+
+[Timer]
+OnCalendar=00/3:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

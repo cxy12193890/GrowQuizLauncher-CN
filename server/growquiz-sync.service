@@ -1,0 +1,6 @@
+[Unit]
+Description=Sync the latest GrowQuiz release (APK + notes) from GitHub to the update directory
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/bin/growquiz-sync.py
