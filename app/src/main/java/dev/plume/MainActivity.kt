@@ -4720,10 +4720,8 @@ class MainActivity : Activity() {
         }
     }
 
-    /** The folder the Gallery screensaver shows instead of paintings, or null for paintings. */
+    /** The folder of family-selected photos used by the Gallery screensaver; null means none is selected. */
     private fun photoScreensaver() = prefs.getString("ss_folder", null)?.takeIf { it != AERIAL_SCREENSAVER }
-
-    private fun aerialScreensaverOn() = galleryOn() && prefs.getString("ss_folder", null) == AERIAL_SCREENSAVER
 
     private fun pickScreensaver(focus: Int = 0) {
         val photos = galleryOn() && photoScreensaver() != null
