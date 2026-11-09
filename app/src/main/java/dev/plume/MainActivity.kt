@@ -1873,8 +1873,7 @@ class MainActivity : Activity() {
     private fun pickWallpaper(forDark: Boolean, focusOn: String? = null) {
         lastSettings = R.string.wallpaper
         val current = currentWallpaper(forDark)
-        val scenes = videoScenes(this)
-        val uploads = ownUploads(forDark, scenes)
+        val uploads = ownUploads(forDark)
         val pick = { c: String -> Tile(wallpaperName(c), c) { setWallpaper(forDark, c); previewWallpaper(c) } }
         val inUse = { mine: Boolean -> current.takeIf { mine } }
 
@@ -1945,17 +1944,17 @@ class MainActivity : Activity() {
     }
 
     /** Your uploaded photos and videos, as choices; videos are the MP4s that are not catalogue scenes. */
-    private fun ownUploads(forDark: Boolean, scenes: List<VideoScene>): List<Pair<String, File?>> {
+    private fun ownUploads(forDark: Boolean): List<Pair<String, File?>> {
         val photos = wallpaperChoices(forDark).filter { it.second.startsWith("file:") }.map { it.second to null as File? }
         val videos = wallpaperDir()?.listFiles { f -> f.extension.equals("mp4", true) }
-            ?.filterNot { f -> scenes.any { it.file == f.name } }?.sortedBy { it.name }.orEmpty().map { "video:${it.name}" to it }
+            ?.sortedBy { it.name }.orEmpty().map { "video:${it.name}" to it }
         return photos + videos
     }
 
     /** Your uploads: OK uses one; the last tiles remove a photo or a video. */
     private fun pickUploads(forDark: Boolean, focusOn: String? = null) {
         val current = currentWallpaper(forDark)
-        val uploads = ownUploads(forDark, videoScenes(this))
+        val uploads = ownUploads(forDark)
         val photos = wallpaperChoices(forDark).filter { it.second.startsWith("file:") }
         val videos = uploads.mapNotNull { it.second }
         val tiles = uploads.map { (choice, video) ->
@@ -2002,15 +2001,6 @@ class MainActivity : Activity() {
         }
     }
 
-    /** A random live scene: played at once when it's on the TV, downloaded first when not. */
-    private fun surpriseVideo(forDark: Boolean) {
-        val dir = wallpaperDir() ?: return
-        val scene = videoScenes(this).randomOrNull() ?: return
-        val file = File(dir, scene.file)
-        if (file.isFile && validVideo(file)) previewVideo(forDark, file)
-        else downloadVideo(forDark, scene, file) { pickVideoWallpaper(forDark) }
-    }
-
     private var wallPreview: String? = null
     private var hidden = false // stopped since settings opened another screen (a trampoline only pauses us)
 
@@ -2035,124 +2025,18 @@ class MainActivity : Activity() {
         previewBack = null
     }
 
-    private fun cleanUnusedVideoWallpapers(dir: File) {
-        val light = prefs.getString("wp_light", null)
-        val dark = prefs.getString("wp_dark", null)
-        // Scenes the Aerial Views screensaver plays share this folder: keep them while it's on.
-        val screensaver = if (aerialScreensaverOn()) aerialScenes(this).map { it.file }.toSet() else emptySet()
-        val catalogFiles = videoScenes(this).map { it.file }.toSet() - screensaver
-        dir.listFiles { f -> f.extension.equals("mp4", true) }?.forEach { file ->
-            val choice = "video:${file.name}"
-            if (file.name in catalogFiles && choice != light && choice != dark) {
-                file.delete()
-            }
-        }
-    }
-
+    /** Local videos selected or uploaded by the family; third-party scene downloads are not offered. */
     private fun pickVideoWallpaper(forDark: Boolean) {
         val dir = wallpaperDir() ?: return
         val current = currentWallpaper(forDark)
-        val allScenes = videoScenes(this)
-        val currentScene = allScenes.firstOrNull { "video:${it.file}" == current }
-        val files = dir.listFiles { f -> f.extension.equals("mp4", true) }?.sortedBy { it.name } ?: emptyList()
-        val own = files.filterNot { file -> allScenes.any { it.file == file.name } }
-        val keepOne = prefs.getBoolean("video_keep_one", false)
-
-
-        val rows = listOf(
-            page(getString(R.string.surprise_me)) { surpriseVideo(forDark) },
-        ) + allScenes.groupBy { it.category }.entries.sortedByDescending { it.value.size }.map { (kind, list) ->
-            page(kind, if (currentScene?.category == kind) CHOSEN else resources.getQuantityString(R.plurals.n_scenes, list.size, list.size)) {
-                pickVideoScenesList(forDark, kind, list.sortedBy { it.name }) { pickVideoWallpaper(forDark) }
-            }
-        } + listOf(
-            page(getString(R.string.add_from_phone)) { uploadWallpaper(forDark) },
-        ) + own.map { file ->
-            page(file.nameWithoutExtension, if (current == "video:${file.name}") CHOSEN else "") { previewVideo(forDark, file) }
-        } + listOf(
-            page(getString(R.string.video_keep_one), toggle(keepOne)) {
-                val next = !keepOne
-                prefs.edit().putBoolean("video_keep_one", next).apply()
-                if (next) cleanUnusedVideoWallpapers(dir)
-                pickVideoWallpaper(forDark)
-            }
-        ) + if (files.isEmpty()) emptyList() else listOf(page(getString(R.string.remove_video)) { removeVideo(forDark, files) })
-
-        val styles = rows.map { r ->
-            if (r.first == getString(R.string.video_keep_one)) RowStyle(sub = getString(R.string.video_keep_one_desc))
-            else null
-        }
-
-        val initialIndex = when {
-            currentScene?.source == "NASA Earth" -> 1
-            currentScene?.source == "Apple Aerial" -> 2
-            currentScene?.source == "Amazon Fire TV" -> 3
-            current.startsWith("video:") -> rows.indexOfFirst { it.first == wallpaperName(current) }.coerceAtLeast(0)
-            else -> 0
-        }
-
-        showPage(getString(R.string.video_wallpapers), rows, initialIndex, styles = styles,
-            top = label(getString(R.string.video_sources_credit), 13f).apply { maxLines = 2; setPadding(dp(14), dp(4), dp(14), dp(12)) }) {
-            pickWallpaper(forDark)
-        }
-    }
-
-    private fun pickVideoScenesList(forDark: Boolean, title: String, scenes: List<VideoScene>, onBack: () -> Unit) {
-        val dir = wallpaperDir() ?: return
-        val current = currentWallpaper(forDark)
-        val rows = scenes.map { item ->
-            val file = File(dir, item.file)
-            page(item.name, if (current == "video:${file.name}") CHOSEN else "") {
-                if (file.isFile && validVideo(file)) previewVideo(forDark, file)
-                else downloadVideo(forDark, item, file) { pickVideoScenesList(forDark, title, scenes, onBack) }
-            }
-        }
-        val initialIndex = if (current.startsWith("video:")) rows.indexOfFirst { it.first == wallpaperName(current) }.coerceAtLeast(0) else 0
-        showPage(title, rows, initialIndex) {
-            onBack()
-        }
-    }
-
-    private fun downloadVideo(forDark: Boolean, item: VideoScene, file: File, onBack: () -> Unit) {
-        val cancelled = AtomicBoolean(false)
-        val status = label(getString(R.string.video_downloading, 0), 16f).apply {
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(0, dp(24), 0, dp(12))
-        }
-        val progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, dp(4)).apply {
-                setMargins(dp(14), 0, dp(14), dp(24))
-            }
-            max = 100
-            progress = 0
-            isIndeterminate = false
-            progressDrawable = progressBarDrawable()
-        }
-        val topBox = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            addView(status)
-            addView(progressBar)
-        }
-        showPage(item.name, listOf(page(getString(R.string.cancel)) { onBack() }), top = topBox) {
-            onBack()
-        }
-        pageExit = { cancelled.set(true) }
-        io.execute {
-            val ok = downloadVideoScene(item, file, cancelled) { pct ->
-                ui.post {
-                    if (!cancelled.get()) {
-                        status.text = getString(R.string.video_downloading, pct)
-                        progressBar.progress = pct
-                    }
-                }
-            }
-            ui.post {
-                if (cancelled.get() || isDestroyed) return@post
-                if (ok) previewVideo(forDark, file)
-                else { toast(getString(R.string.video_download_failed), long = true); onBack() }
-            }
-        }
+        val files = dir.listFiles { f -> f.extension.equals("mp4", true) }?.sortedBy { it.name }.orEmpty()
+        val rows = listOf(page(getString(R.string.add_from_phone)) { uploadWallpaper(forDark) }) +
+            files.map { file -> page(file.nameWithoutExtension, if (current == "video:${file.name}") CHOSEN else "") { previewVideo(forDark, file) } } +
+            if (files.isEmpty()) emptyList() else listOf(page(getString(R.string.remove_video)) { removeVideo(forDark, files) })
+        val initial = if (current.startsWith("video:")) rows.indexOfFirst { it.first == wallpaperName(current) }.coerceAtLeast(0) else 0
+        showPage(getString(R.string.video_wallpapers), rows, initial, top = label("仅显示你选择或上传的视频", 13f).apply {
+            maxLines = 2; setPadding(dp(14), dp(4), dp(14), dp(12))
+        }) { pickWallpaper(forDark) }
     }
 
     private fun previewVideo(forDark: Boolean, file: File) {
@@ -4859,78 +4743,12 @@ class MainActivity : Activity() {
             },
         ), focus.coerceIn(0, 1)) { renderSettings(R.string.screensaver) }
     }
-    @Volatile private var aerialDownload: String? = null // the scene file being fetched, one at a time
 
     /**
      * Aerial Views: turn it on, then the Apple scenes. A scene on disk (from here or from the video wallpaper)
      * plays at once; selecting it offers Remove. A scene not on disk downloads into the shared wallpaper folder.
      */
-    private fun pickAerialScenes(focus: Int = 0) {
-        val dir = wallpaperDir() ?: return
-        val onDisk = aerialFiles(this)
-        val mb = onDisk.sumOf { it.length() } / (1024 * 1024)
-        val rows = listOf(
-            page(getString(R.string.use_aerial_views), if (aerialScreensaverOn()) CHOSEN else resources.getQuantityString(R.plurals.aerial_on_disk, onDisk.size, onDisk.size, mb)) {
-                if (onDisk.isEmpty()) toast(getString(R.string.aerial_download_first), long = true)
-                else useGallery(AERIAL_SCREENSAVER)
-                pickAerialScenes(0)
-            },
-        ) + aerialScenes(this).groupBy { it.category }.entries.sortedByDescending { it.value.size }.mapIndexed { i, (kind, list) ->
-            val have = list.count { File(dir, it.file).isFile }
-            page(kind, "${resources.getQuantityString(R.plurals.n_scenes, list.size, list.size)}${if (have > 0) " · $have ✓" else ""}  ›") {
-                pickAerialKind(kind, list.sortedBy { it.name }) { pickAerialScenes(i + 1) }
-            }
-        }
-        showPage(getString(R.string.aerial_views), rows, focus) { pickScreensaver(1) }
-    }
 
-    /** One kind of Apple scene for the screensaver: OK downloads a scene, or offers to remove one that is on the TV. */
-    private fun pickAerialKind(kind: String, scenes: List<VideoScene>, focus: Int = 0, back: () -> Unit) {
-        val dir = wallpaperDir() ?: return
-        showPage(kind, scenes.mapIndexed { i, scene ->
-            val file = File(dir, scene.file)
-            val value = when {
-                aerialDownload == scene.file -> getString(R.string.downloading)
-                file.isFile -> "${file.length() / (1024 * 1024)} MB"
-                else -> ""
-            }
-            page(scene.name, value) {
-                if (file.isFile) removeAerialScene(scene, file) { pickAerialKind(kind, scenes, i, back) }
-                else downloadAerialScene(scene, file) { pickAerialKind(kind, scenes, i, back) }
-            }
-        }, focus, crumb = getString(R.string.aerial_views)) { back() }
-    }
-
-    private fun removeAerialScene(scene: VideoScene, file: File, back: () -> Unit) {
-        showPage(scene.name, listOf(page(getString(R.string.delete)) {
-            val choice = "video:${file.name}"
-            // The wallpaper still uses it: keep it, or Home would lose its picture.
-            if (choice == prefs.getString("wp_light", null) || choice == prefs.getString("wp_dark", null)) {
-                toast(getString(R.string.aerial_in_use), long = true)
-            } else {
-                file.delete()
-                if (aerialScreensaverOn() && aerialFiles(this).isEmpty()) stopGallery()
-            }
-            back()
-        })) { back() }
-    }
-
-    private fun downloadAerialScene(scene: VideoScene, file: File, back: () -> Unit) {
-        if (aerialDownload != null) return toast(getString(R.string.downloading))
-        aerialDownload = scene.file
-        back()
-        io.execute {
-            val ok = downloadVideoScene(scene, file, AtomicBoolean(false)) {}
-            ui.post {
-                aerialDownload = null
-                if (isDestroyed) return@post
-                if (!ok) toast(getString(R.string.video_download_failed), long = true)
-                if (settingsScrim.visibility == View.VISIBLE) back()
-            }
-        }
-    }
-
-    /** The in-app screensaver is limited to a folder explicitly selected by the family. */
     private fun useGallery(folder: String?) {
         if (folder == null) return toast("未经核实授权的画作屏保已停用，请选择个人照片。", long = true)
         prefs.edit().putString("ss_folder", folder).apply()
