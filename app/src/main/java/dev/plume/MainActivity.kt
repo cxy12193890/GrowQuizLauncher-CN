@@ -1321,7 +1321,7 @@ class MainActivity : Activity() {
     /** The clock's digits only: the date keeps the system font, which has every language's month names. */
     private fun clockFace(): Typeface = when (prefs.getString("clock_style", "light")) {
         "bold" -> Typeface.create("sans-serif", Typeface.BOLD) // strong on busy wallpapers
-        "serif" -> resources.getFont(R.font.clock_serif) // Fraunces, OFL
+        "serif" -> Typeface.create("serif", Typeface.NORMAL) // Android system serif; no bundled font asset
         else -> Typeface.create("sans-serif-light", Typeface.NORMAL)
     }
 
