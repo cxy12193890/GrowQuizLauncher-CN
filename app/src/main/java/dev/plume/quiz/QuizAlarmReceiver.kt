@@ -12,20 +12,17 @@ class QuizAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val prefs = QuizPrefs(context)
         if (!prefs.enabled) return
-        // GrowQuiz: read the due time before rescheduling overwrites it, so the event can say how
+        // GrowQuiz: read the due time before rescheduling overwrites it, so the local event can say how
         // late the alarm really was — the number that tells an inexact fallback from a broken alarm.
         val due = prefs.nextTriggerAt
         // Schedule first so an unanswered or interrupted quiz never disables future sessions.
         QuizScheduler.reschedule(context)
-        // GrowQuiz: the alarm wakes this process anyway, so a TV nobody opens still reports on
-        // schedule — day-one data showed most devices only ever started once.
-        dev.plume.ReportUpload.maybeUpload(context)
         // GrowQuiz: judge the previous alarm before this one overwrites its timestamp — a fired
         // alarm that never produced a quiz_open was swallowed silently (background-start rules
-        // throw nothing), and only this look-back can see it.
+        // throw nothing), and only this local look-back can detect it.
         auditSwallowed(context)
         prefs.lastAlarmAt = System.currentTimeMillis()
-        // GrowQuiz: the report pairs this event with QuizActivity's quiz_open; an alarm_fired with
+        // GrowQuiz: the local event log pairs this event with QuizActivity's quiz_open; an alarm_fired with
         // no quiz_open soon after means the firmware swallowed the start (background-start rules).
         val kv = mutableMapOf<String, String>()
         if (due > 0) kv["lateMs"] = (System.currentTimeMillis() - due).toString()
@@ -47,7 +44,7 @@ class QuizAlarmReceiver : BroadcastReceiver() {
         /**
          * Writes quiz_popup_blocked("silent") when the last alarm on record never produced a
          * quiz_open. Called from here and from App.onCreate, so a TV whose alarms stop entirely
-         * still reports the miss the next time any part of the app runs.
+         * still records the miss locally the next time any part of the app runs.
          */
         fun auditSwallowed(context: Context) {
             val prefs = QuizPrefs(context)
