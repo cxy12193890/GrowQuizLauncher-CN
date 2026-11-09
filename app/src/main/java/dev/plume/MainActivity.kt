@@ -2532,7 +2532,7 @@ class MainActivity : Activity() {
         val active = AtomicBoolean(true)
         val status = label(getString(R.string.waiting_photo), 14f).apply { gravity = Gravity.CENTER; maxLines = 2 }
         val server = try {
-            UploadServer(this, ip, (1000..9999).random().toString(), File.createTempFile("upload-", ".tmp", cacheDir)) { file, video ->
+            UploadServer(this, ip, ByteArray(16).also { java.security.SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }, File.createTempFile("upload-", ".tmp", cacheDir)) { file, video ->
                 if (!active.get()) return@UploadServer null
                 val saved = (if (video) importVideoWallpaper(file, dir) else importWallpaper(file, dir)) ?: return@UploadServer null
                 ui.post {
