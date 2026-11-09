@@ -5,14 +5,14 @@ import android.os.SystemClock
 import java.io.File
 
 /**
- * A small structured diary of everything that matters for cross-vendor compatibility: crashes,
- * blocked quiz pop-ups, lost foreground, dead accessibility binds, missing speech engines, failed
- * updates. One JSON object per line in files/diag_events.jsonl; [ReportUpload] ships the fresh
- * lines home once a day.
+ * A small structured diary of local compatibility events: crashes, blocked quiz pop-ups, lost
+ * foreground, dead accessibility binds, missing speech engines and failed updates. One JSON object
+ * per line in files/diag_events.jsonl. The file stays in the app's private storage on this TV and
+ * is not uploaded to a developer server.
  *
  * Lines are built by hand (not org.json) so the pure parts — [line], [tsOf], [trimmed] — run in
  * plain JVM unit tests. Writes are tiny appends; the file is trimmed to [TRIM_TO] lines whenever
- * it grows past [MAX_LINES], so a TV that never reaches the server still keeps the newest events.
+ * it grows past [MAX_LINES], keeping the newest local events.
  */
 object DiagLog {
     private const val FILE = "diag_events.jsonl"
@@ -29,7 +29,7 @@ object DiagLog {
     }
 
     /**
-     * Records one event. [type] is a stable snake_case name the report analysis groups by
+     * Records one event. [type] is a stable snake_case name the local diagnostic viewer groups by
      * ("crash", "quiz_popup_blocked", ...); [msg] is free text; [kv] carries small flat values.
      */
     @Synchronized

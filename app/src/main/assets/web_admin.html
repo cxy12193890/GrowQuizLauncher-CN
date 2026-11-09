@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>宝贝成长桌面 · 控制端</title>
+  <title>电视答题锁 · 控制端</title>
   <style>
     :root{--bg:#0b1526;--card:#14233f;--card2:#0f1c33;--line:#27446c;--text:#eef4ff;--muted:#9fb3d6;--gold:#ffd166;--green:#2ea67b;--red:#d9534f;--blue:#3d7bfd}
     *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#08101f,#0b1526);color:var(--text);font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -125,7 +125,7 @@
     <div class="brand">
       <div class="logo">🌱</div>
       <div>
-        <h1 id="brandTitle">宝贝成长桌面 · 控制端</h1>
+        <h1 id="brandTitle">电视答题锁 · 控制端</h1>
         <p>局域网内使用，所有配置都在浏览器里完成</p>
       </div>
     </div>
@@ -548,7 +548,7 @@
         head.className = 'check-h chk-bad';
         head.textContent = '切走弹回：缺少权限，目前不生效';
         how.innerHTML = '需要「显示在其他应用上层」权限。用安装脚本部署会自动授予；手动装的可以执行：'
-          + '<br><code>adb shell appops set dev.plume.growquiz SYSTEM_ALERT_WINDOW allow</code>';
+          + '<br><code>adb shell appops set com.tvquizlock.app SYSTEM_ALERT_WINDOW allow</code>';
       } else if (okCount === 0) {
         head.className = 'check-h chk-warn';
         head.textContent = '切走弹回：已开启，暂时还没拦截过';
@@ -566,7 +566,7 @@
         aHead.textContent = '答题时间：缺少权限，可能被推迟';
         aHow.innerHTML = '在电视「设置 → 应用 → 特殊权限 → 闹钟和提醒」里允许本应用，'
           + '或用电脑连电视 adb 代授（Android 12 及以上）：<br>'
-          + '<code>adb shell pm grant dev.plume.growquiz android.permission.SCHEDULE_EXACT_ALARM</code><br>'
+          + '<code>adb shell pm grant com.tvquizlock.app android.permission.SCHEDULE_EXACT_ALARM</code><br>'
           + '修改后这里会立即变绿，无需重启。';
       } else {
         aHead.className = 'check-h chk-ok';
@@ -579,17 +579,17 @@
       if (!s.a11yEnabled) {
         hHead.className = 'check-h chk-bad';
         hHead.textContent = '主屏幕键服务：未开启';
-        hHow.innerHTML = '在电视「设置 → 无障碍」里开启「宝贝成长桌面（主屏幕键）」服务，'
+        hHow.innerHTML = '在电视「设置 → 无障碍」里开启「电视答题锁（主屏幕键）」服务，'
           + '或用电脑连电视 adb 代开：<br>'
           + '<code>adb shell settings put secure enabled_accessibility_services '
-          + 'dev.plume.growquiz/dev.plume.HomeOverride</code><br>'
+          + 'com.tvquizlock.app/dev.plume.HomeOverride</code><br>'
           + '<code>adb shell settings put secure accessibility_enabled 1</code><br>'
-          + 'TCL/雷鸟设备代开后如未生效，在电视上打开一次「宝贝成长桌面」即可绑定。'
+          + 'TCL/雷鸟设备代开后如未生效，在电视上打开一次「电视答题锁」即可绑定。'
           + '不开启时，遥控器的一键影视键、厂商桌面抢屏都无法拦截。';
       } else if (!s.a11y) {
         hHead.className = 'check-h chk-warn';
         hHead.textContent = '主屏幕键服务：已开启但未生效';
-        hHow.innerHTML = '打开一次「宝贝成长桌面」即可恢复；若反复出现请联系开发者。';
+        hHow.innerHTML = '打开一次「电视答题锁」即可恢复；若反复出现请联系开发者。';
       } else {
         hHead.className = 'check-h chk-ok';
         hHead.textContent = '主屏幕键服务：正常工作';

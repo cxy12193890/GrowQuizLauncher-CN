@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 徽章外圈的深蓝作底色: 圆形徽章放在 72dp 安全区内, 裁切后仍是一枚完整的圆。 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background" />
-    <foreground android:drawable="@mipmap/ic_launcher_fg" />
+    <background android:drawable="@drawable/tvquizlock_icon_bg" />
+    <foreground android:drawable="@drawable/tvquizlock_icon_fg" />
 </adaptive-icon>

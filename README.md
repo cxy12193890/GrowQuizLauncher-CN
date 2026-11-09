@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/img/banner.png" alt="宝贝成长桌面 GrowQuiz Launcher" width="100%">
+  <img src="docs/img/banner.png" alt="电视答题锁 TVQuizLock Launcher" width="100%">
 </p>
 
 <p align="center">
@@ -11,7 +11,7 @@
   <img alt="Offline" src="https://img.shields.io/badge/%E8%BF%90%E8%A1%8C-%E7%A6%BB%E7%BA%BF%E6%97%A0%E9%9C%80%E7%99%BB%E5%BD%95-lightgrey">
 </p>
 
-<h1 align="center">宝贝成长桌面 · GrowQuiz Launcher</h1>
+<h1 align="center">电视答题锁 · TVQuizLock Launcher</h1>
 
 <p align="center"><em>一台会提问的电视桌面：到点自动出题，答对才回到动画片。</em></p>
 
@@ -21,9 +21,9 @@
 
 孩子看完一集还想再看一集，家长不可能每次都守在旁边。
 
-**宝贝成长桌面**把 Android TV 的桌面换成一个小而快的启动器，并按你设定的间隔把全屏答题弹到最前面：题答错了就换一道继续，答对了才回到桌面。题目全部离线内置，音量键、返回键都进不去动画片——想继续看，先答对一题。
+**电视答题锁**把 Android TV 的桌面换成一个小而快的启动器，并按你设定的间隔把全屏答题弹到最前面：题答错了就换一道继续，答对了才回到桌面。题目全部离线内置，音量键、返回键都进不去动画片——想继续看，先答对一题。
 
-它基于开源桌面 [Plume Launcher](https://github.com/aradhyas8/Plume_Launcher)（无广告、无账号、无统计的极简 TV 桌面，APK 约 0.4 MB），在保留原桌面全部功能的前提下加入儿童问答与家长管理模块；宝贝成长桌面自身安装包约 1.0 MB。
+它基于开源桌面 [Plume Launcher](https://github.com/aradhyas8/Plume_Launcher)（无广告、无账号、无统计的极简 TV 桌面，APK 约 0.4 MB），在保留原桌面全部功能的前提下加入儿童问答与家长管理模块；电视答题锁自身安装包约 1.0 MB。
 
 
 
@@ -48,7 +48,7 @@
 | 🔒 | **设备所有者锁定** | 配置 Device Owner 后启用 Lock Task，答题期间无法用遥控器切走 |
 | 🔑 | **设置密码保护** | 设置管理密码后，电视上的 Wi-Fi、系统设置和桌面设置入口也需输入密码 |
 | 📱 | **手机当管理台** | 电视内置一个局域网网页控制台（默认 `:8081`），手机浏览器即可改年龄、间隔、管题库、立即出题 |
-| ⬆️ | **自动更新** | 每天自动检查一次新版本并静默下载安装；更新服务器每 3 小时从 GitHub Releases 同步最新发版 |
+| ⬆️ | **自动更新** | 每天自动检查本项目 GitHub Releases；发现新版本后在设置中提示安装，APK 直接从本项目 Release 资产下载 |
 | ♻️ | **开机自动恢复** | 重启电视后自动重新排定下一次问答，不必手动打开应用；答题或强制休息中途断电，开机后自动回到对应界面 |
 | 🖥 | **完整桌面功能** | 应用行、继续观看、HDMI 信号源、壁纸/屏保、遥控器按键自定义等上游能力全部保留 |
 
@@ -61,7 +61,7 @@
 ## 界面
 
 <p align="center">
-  <img src="docs/img/home.jpg" alt="宝贝成长桌面主界面" width="49%">
+  <img src="docs/img/home.jpg" alt="电视答题锁主界面" width="49%">
   <img src="docs/img/quiz.png" alt="全屏答题界面" width="49%">
 </p>
 
@@ -81,7 +81,7 @@
 
 **方式一：直接下载（推荐）**
 
-从 [GitHub Releases](https://github.com/1zzzzzlll/GrowQuizLauncher/releases) 下载最新版 `GrowQuiz-vX.Y.Z.apk`。自 v1.6.0 起所有版本使用同一正式密钥签名，可直接覆盖安装。
+从 [GitHub Releases](https://github.com/cxy12193890/GrowQuizLauncher-CN/releases) 下载最新版 `TVQuizLock-vX.Y.Z.apk`。正式版必须使用项目固定签名密钥；未配置密钥时只生成测试构建，不作为正式发行包。
 
 > **换版须知**：如果你装的是 v1.6.0 之前的旧版（debug 签名），必须先卸载旧版再安装，卸载会清除学习进度和设置。
 
@@ -94,7 +94,7 @@ cd GrowQuizLauncher
 # 产物：app/build/outputs/apk/release/app-release.apk
 ```
 
-需要 JDK 17+ 与 Android SDK（`compileSdk 36`）。未提供 `keystore.properties` 时，release 包使用本机 debug 签名，自用安装没有问题（但与官方发布版签名不同，二者之间不能直接覆盖安装）。
+需要 JDK 17+ 与 Android SDK（`compileSdk 36`）。正式 Release 构建必须通过本地 `keystore.properties` 或 GitHub Actions Secrets 提供固定签名密钥；未提供时 Release APK 不签名，Debug APK 仅用于测试。
 
 ### 2. 安装到电视
 
@@ -110,17 +110,17 @@ adb install -r app-release.apk
 
 ### 3. 设为默认桌面
 
-打开 **设置 → 应用 → 默认应用 → 主屏幕**，选择「宝贝成长桌面」。
+打开 **设置 → 应用 → 默认应用 → 主屏幕**，选择「电视答题锁」。
 
 > **找不到这个设置？** 很多电视没有「默认应用」这一步：有的系统会在按主屏幕键时弹出选择框，有的压根不提供切换入口。找不到时**不用纠结，按软件内指引配置即可**——首次启动桌面会逐步引导（选默认桌面、开「主屏幕键」无障碍服务等），照着走完就能正常接管，即使厂商系统不提供手动切换入口。
 
 安装脚本 `tools/growquiz-install.sh` 把整条部署链路串了起来：连接并等待电视上的授权 → 安装（含 TCL 签名白名单的自动绕过）→ 从电视读回版本号核对 → 授予 `WRITE_SECURE_SETTINGS` → 拉起桌面。
 
 ```sh
-sh tools/growquiz-install.sh GrowQuiz-v1.13.0.apk 192.168.1.20:5555
+sh tools/growquiz-install.sh TVQuizLock-v1.13.0.apk 192.168.1.20:5555
 
 # adb 不在 PATH 时指定路径
-ADB="/d/SDK/platform-tools/adb.exe" sh tools/growquiz-install.sh GrowQuiz-v1.13.0.apk 192.168.1.20
+ADB="/d/SDK/platform-tools/adb.exe" sh tools/growquiz-install.sh TVQuizLock-v1.13.0.apk 192.168.1.20
 
 # 省略参数则用 app/build/outputs/apk/release/app-release.apk 与当前已连接的唯一设备
 sh tools/growquiz-install.sh
@@ -145,7 +145,7 @@ sh tools/growquiz-install.sh
 普通默认桌面模式下，孩子仍可能通过系统设置或语音搜索切走应用。需要更强的约束时，配置 Device Owner：
 
 ```sh
-adb shell dpm set-device-owner dev.plume.growquiz/dev.plume.quiz.QuizDeviceAdminReceiver
+adb shell dpm set-device-owner com.tvquizlock.app/dev.plume.quiz.QuizDeviceAdminReceiver
 ```
 
 配置后答题期间启用 Lock Task，返回/主页键无法脱离。**注意**：Device Owner 不是 root，也不等于刷机；部分电视要求设备未登录账号、且没有其他设备所有者。移除方式取决于厂商系统，必要时需通过系统管理入口或恢复出厂设置处理，**请先备份数据并在可折腾的设备上试**。
@@ -156,7 +156,7 @@ adb shell dpm set-device-owner dev.plume.growquiz/dev.plume.quiz.QuizDeviceAdmin
 
 本应用可以拦截这类按键：接管主屏幕键的无障碍服务会**先于所有应用**看到按键，把按键设为「无操作」即被吞掉：
 
-1. 确保「主屏幕键」功能已开启（第 3 步中按提示在系统无障碍设置里开启「宝贝成长桌面：主屏幕键」服务）；
+1. 确保「主屏幕键」功能已开启（第 3 步中按提示在系统无障碍设置里开启「电视答题锁：主屏幕键」服务）；
 2. 进入「桌面设置 → 主屏幕键 & 遥控器 → 遥控器按键」→「添加按键」，按下遥控器上那个一键直达键；
 3. 把「按下」（必要时连「长按」）设为「无操作」即可。
 
@@ -165,7 +165,7 @@ adb shell dpm set-device-owner dev.plume.growquiz/dev.plume.quiz.QuizDeviceAdmin
 - 返回、OK、方向、音量、电源、主屏幕键不可改也不可屏蔽，防止误把自己锁死；
 - 个别按键若在该页面按下后没有反应，说明它没有经过 Android 按键系统（如红外直接控制电视本体），此类按键无法拦截，建议停用对应 App 或换一个不带专用键的遥控器；
 - 要恢复按键原功能，同一页面选「移除此按键」；
-- **「添加按键」按下没反应、或之前设好的按键突然不生效**：说明无障碍服务没有真正跑起来（覆盖安装后系统会把它判为「已崩溃」且不再自动绑定，TCL 固件尤其明显）。v1.13.1 起应用会在启动后自查并重新启用一次；旧版本请到系统「无障碍」里把「宝贝成长桌面：主屏幕键」关掉再打开一次。
+- **「添加按键」按下没反应、或之前设好的按键突然不生效**：说明无障碍服务没有真正跑起来（覆盖安装后系统会把它判为「已崩溃」且不再自动绑定，TCL 固件尤其明显）。v1.13.1 起应用会在启动后自查并重新启用一次；旧版本请到系统「无障碍」里把「电视答题锁：主屏幕键」关掉再打开一次。
 - **完全不依赖无障碍的兜底**：答题页一旦被切到别的 App，会立刻（最迟一秒内）自动切回，这条路径只需要「显示在其他应用上层」权限，与无障碍无关。
 
 ## 附录：把 APK 装进电视的完整指南
@@ -238,7 +238,7 @@ adb shell dpm set-device-owner dev.plume.growquiz/dev.plume.quiz.QuizDeviceAdmin
 # 电视上：开发者选项 → 无线调试 → 使用配对码配对设备（保持此页面开着）
 adb pair 192.168.1.20:配对端口     # 输入屏幕上显示的 6 位配对码
 adb connect 192.168.1.20:调试端口  # 注意调试端口与配对端口不同，在无线调试首页查看
-adb install -r GrowQuiz-vX.Y.Z.apk
+adb install -r TVQuizLock-vX.Y.Z.apk
 ```
 
 配对端口和调试端口**每次重启电视都会变化**，掉线后需重新配对。
@@ -251,7 +251,7 @@ adb install -r GrowQuiz-vX.Y.Z.apk
 
 - 用 **8–32G 的普通 U 盘**，格式化为 **FAT32**（exFAT 新电视认、老电视多数不认，拿不准就 FAT32；NTFS 最容易读不出来）。移动硬盘别用，电视 USB 口供电弱，容易识别失败；
 - 从 [GitHub Releases](https://github.com/1zzzzzlll/GrowQuizLauncher/releases) 下载对应版本 APK，**核对文件大小**与发布页一致（下载不完整是最常见的「解析包错误」原因）；
-- APK 放 **U 盘根目录**，不要套多层文件夹；文件名改成英文或数字（如 `GrowQuiz.apk`），个别电视解析中文文件名会报错；
+- APK 放 **U 盘根目录**，不要套多层文件夹；文件名改成英文或数字（如 `TVQuizLock.apk`），个别电视解析中文文件名会报错；
 - 确认电视系统为 **Android 8.0（API 26）及以上**：设置 → 本机信息里看「系统/软件版本」。本应用不兼容更老的系统。
 
 #### 第 2 步：打开电视的安装权限
@@ -290,7 +290,7 @@ adb install -r GrowQuiz-vX.Y.Z.apk
 
 **WorkBuddy（可直接动手）**：WorkBuddy 运行在你的电脑上、能直接执行命令。把 APK 路径和电视 IP 给它即可一句话完成，例如：
 
-> 「帮我把 `C:\Users\me\Downloads\GrowQuiz-v1.8.0.apk` 通过无线 ADB 装到 192.168.1.20 这台电视上，装完把安装结果告诉我。」
+> 「帮我把 `C:\Users\me\Downloads\TVQuizLock-v1.8.0.apk` 通过无线 ADB 装到 192.168.1.20 这台电视上，装完把安装结果告诉我。」
 
 它会自动执行 `adb connect` → `adb install -r`，并根据输出判断是否成功；连接被拒、签名冲突、设备离线等报错也会直接给出排查建议。如果没装 adb，可以先让它「帮我下载解压 platform-tools 并装好 adb」。
 
@@ -306,7 +306,7 @@ adb install -r GrowQuiz-vX.Y.Z.apk
 部分 TCL 固件（实测机型 `tcl_mt5879_cn`，Android 11）在系统安装器内部加了一道签名校验：APK 的签名必须落在该机型的白名单里，否则拒绝安装。表现是安装直接失败：
 
 ```sh
-adb install -r GrowQuiz.apk
+adb install -r TVQuizLock.apk
 # Performing Streamed Install
 # adb: failed to install ...: Failure [INSTALL_FAILED_VERIFICATION_FAILURE]
 ```
@@ -324,7 +324,7 @@ verifier: signature does not match for tcl dev.plume.growquiz, will not be insta
 
 ```sh
 adb shell pm disable-user --user 0 com.android.packageinstaller
-adb install -r GrowQuiz.apk
+adb install -r TVQuizLock.apk
 adb shell pm enable com.android.packageinstaller     # 必须执行
 ```
 
@@ -376,7 +376,7 @@ adb shell cmd package query-services -a android.intent.action.TTS_SERVICE   # �
 | 答题记录与自定义题 | `quiz/QuestionBank.kt` | 记录每题答对次数（满 5 次自动禁用），合并家长自定义题与题目启停状态 |
 | 局域网管理台 | `web/WebAdminServer.kt` | 纯 JDK `ServerSocket` 单页服务：设置、题库维护、批量导入（`/import` 独立页）、改密码、TTS 测试；SHA-256 加盐口令、24 小时会话 Cookie，无第三方依赖 |
 | 自动更新 | `ApkProvider.kt` + 更新服务器 | 每天检查一次自有更新服务器；服务器每 3 小时从 GitHub Releases 同步最新发版 |
-| 兼容诊断 | `DiagLog.kt` + `DeviceProbe.kt` + `ReportUpload.kt` + `Vendor.kt` + `quiz/PopupAudit.kt` | 崩溃/开机/答题弹出/前台保持/无障碍绑定/语音/更新等关键事件记为 JSONL；每天随设备探针快照匿名上报一次，用于按品牌适配；`Vendor` 在运行时识别品牌，品牌专属修复只在对应设备上运行；`PopupAudit` 用「上次闹钟时间 vs 上次答题页打开时间」的比对发现被系统静默吞掉的答题弹窗（纯 JVM，有单测） |
+| 本地诊断 | `DiagLog.kt` + `DeviceProbe.kt` + `CrashLog.kt` + `Vendor.kt` + `quiz/PopupAudit.kt` | 诊断事件与崩溃记录仅保存在电视本机应用私有目录，不会上传设备信息、题目记录或崩溃日志；`DeviceProbe` 只检查本机无障碍和闹钟授权状态；`PopupAudit` 用「上次闹钟时间 vs 上次答题页打开时间」的比对发现被系统静默吞掉的答题弹窗（纯 JVM，有单测） |
 | 语音 | `quiz/QuizVoice.kt` + `quiz/SpeechText.kt` + `quiz/TtsProbe.kt` + `quiz/TtsDiagnosis.kt` | `QuizVoice` 是全局唯一的 TTS 引擎，桌面启动即预热；`SpeechText` 把题目改写成可朗读的中文（纯 JVM，有单测）；`TtsProbe` 供管理台检测引擎可用性，并列出本机已装引擎；`TtsDiagnosis` 把「没装引擎」与「引擎启动失败」分成两种上报事件（纯 JVM，有单测） |
 | 桌面本体 | `dev.plume.*` | 上游 Plume 的桌面、壁纸、屏保、按键重映射等 |
 
@@ -443,3 +443,11 @@ tools/                               # 安装脚本、题库生成、上游设�
 - 本项目基于 [Plume Launcher](https://github.com/aradhyas8/Plume_Launcher)（作者 aradhyas8）二次开发，上游评估提交 `e7e663ba85a5028e29206ad9a67ad248c500042d`，遵循 **GPL-3.0** 发布，完整许可见 [LICENSE](LICENSE)。任何分发版本（含修改版）都必须同样以 GPL-3.0 开源并提供完整源码。
 - 上游的完整功能说明、安装细节与隐私条目已归档在 [docs/UPSTREAM-PLUME.md](docs/UPSTREAM-PLUME.md)。
 - 屏保油画（公有领域）、壁纸包、Aerial 场景与图标来源见上游文档的 Credits 一节。
+
+
+## 隐私与发行说明
+
+- 已移除自动设备兼容报告上传。崩溃记录和诊断事件仅保存在电视本机，不会发送到开发者服务器。
+- 应用更新只查询本项目 GitHub Releases API，并从本项目 Release 资产下载 APK；不再访问原作者的更新服务器。
+- 本项目是基于 Plume Launcher 的 GPL-3.0 二次开发。分发修改版时必须遵守 GPL-3.0，并提供对应完整源码。
+- 题库与部分壁纸素材的商业授权仍在核验中；在授权清单标记为通过前，不得发布收费正式版。

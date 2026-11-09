@@ -2,10 +2,10 @@
 """发布一个新版本：在 GitHub 仓库创建 release（附 APK 与发版说明）。
 
 用法:
-    python tools/publish_update.py path/to/GrowQuiz-vX.Y.Z.apk
+    python tools/publish_update.py path/to/TVQuizLock-vX.Y.Z.apk
 
 流程:
-  1. 校验文件名 GrowQuiz-vX.Y.Z.apk
+  1. 校验文件名 TVQuizLock-vX.Y.Z.apk
   2. 从 CHANGELOG.md 提取该版本小节作为发版说明
   3. gh release create 上传 APK 资产
 
@@ -15,7 +15,7 @@
 
 发版前记得:
   - app/build.gradle.kts 的 versionName/versionCode 与文件名一致且高于已装版本；
-  - 本次改动已提交并推送到 main（release 打在远端最新提交上）；
+  - 本次改动已提交并推送到 commercial-dev（release 打在远端最新提交上）；
   - 本机 gh 已登录（gh auth status）。
 """
 
@@ -25,8 +25,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-REPO = "1zzzzzlll/GrowQuizLauncher"
-NAME_RE = re.compile(r"^GrowQuiz-v(\d+\.\d+(?:\.\d+)?)\.apk$")
+REPO = "cxy12193890/GrowQuizLauncher-CN"
+NAME_RE = re.compile(r"^TVQuizLock-v(\d+\.\d+(?:\.\d+)?)\.apk$")
 
 
 def run(cmd: list[str]) -> None:
@@ -57,7 +57,7 @@ def main() -> None:
         notes_path = f.name
 
     run(["gh", "release", "create", f"v{version}", str(apk),
-         "--repo", REPO, "--title", f"GrowQuiz v{version}", "--notes-file", notes_path])
+         "--repo", REPO, "--title", f"TVQuizLock v{version}", "--notes-file", notes_path])
     print(f"已发布 v{version}：https://github.com/{REPO}/releases/tag/v{version}")
     print("mylinux 每 3 小时自动同步到更新目录，无需手动上传。")
 

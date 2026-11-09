@@ -17,7 +17,7 @@
     <!-- Folder wallpapers: asked for only when someone picks "Choose a folder on this TV". -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <!-- Granted once over adb (pm grant dev.plume android.permission.WRITE_SECURE_SETTINGS) so the app can
+    <!-- Granted once over adb (pm grant com.tvquizlock.app android.permission.WRITE_SECURE_SETTINGS) so the app can
          re-enable its Home service: Android drops it from the enabled list whenever the app is force-stopped. -->
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
@@ -25,7 +25,7 @@
     <!-- The quiz page is not allowed to come back by itself on Android 10 and newer: the system blocks a
          background start ("isBgStartWhitelisted: false" in logcat) unless the app holds this permission.
          Without it, a child that opens another app keeps it, and the question never returns. Granted once
-         over adb (appops set dev.plume.growquiz SYSTEM_ALERT_WINDOW allow), or by the user on TV. -->
+         over adb (appops set com.tvquizlock.app SYSTEM_ALERT_WINDOW allow), or by the user on TV. -->
     <uses-permission
         android:name="android.permission.SYSTEM_ALERT_WINDOW"
         tools:ignore="ProtectedPermissions" />
@@ -45,7 +45,7 @@
         <!-- Speech engines. Android 11 and later hide other packages from a query unless they are
              declared here, and TextToSpeech lists engines with exactly these two intents: without
              them the list comes back empty on a set that has an engine, and the engine cannot be
-             started either. Every report so far shows an empty list. -->
+             started either. Some TV firmware returns an empty list. -->
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
@@ -162,7 +162,7 @@
             android:lockTaskMode="if_whitelisted"
             android:screenOrientation="landscape"
             android:showWhenLocked="true"
-            android:taskAffinity="dev.plume.growquiz.quiz"
+            android:taskAffinity="${applicationId}.quiz"
             android:turnScreenOn="true" />
         <receiver
             android:name=".quiz.QuizAlarmReceiver"

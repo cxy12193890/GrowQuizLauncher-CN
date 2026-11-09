@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-# growquiz-install.sh: install GrowQuiz on a TV over adb, then make it reachable as a home screen.
+# growquiz-install.sh: install TVQuizLock on a TV over adb, then make it reachable as a home screen.
 #
 # Usage:  sh tools/growquiz-install.sh [APK] [TV_IP[:PORT]]
 #   APK            defaults to app/build/outputs/apk/release/app-release.apk
@@ -15,14 +15,14 @@ set -eu
 # Vendor signature gate (TCL / FFalcon 雷鸟, and possibly other rebrands of the same firmware)
 #
 # Some TCL firmwares run a patched package installer that checks the APK signature against a
-# vendor white list. A GrowQuiz release is not on that list, so a plain install fails with:
+# vendor white list. A TVQuizLock release is not on that list, so a plain install fails with:
 #
 #     adb: failed to install ...: Failure [INSTALL_FAILED_VERIFICATION_FAILURE]
 #
 # and logcat shows who said no:
 #
 #     verifier: fetch signature info from: com.tcl.cyberui
-#     verifier: signature does not match for tcl dev.plume.growquiz, will not be installed!
+#     verifier: signature does not match for tcl com.tvquizlock.app, will not be installed!
 #
 # What does NOT help (checked on a TCL tcl_mt5879_cn, Android 11):
 #   - settings put global verifier_verify_adb_installs 0
@@ -37,7 +37,7 @@ set -eu
 # disabled cannot install anything else, so this part must not be interruptible.
 # ---------------------------------------------------------------------------------------------
 
-PACKAGE=dev.plume.growquiz
+PACKAGE=com.tvquizlock.app
 ADMIN=dev.plume.quiz.QuizDeviceAdminReceiver
 VERIFIER_PKG=com.android.packageinstaller
 
@@ -141,7 +141,7 @@ else
     *INSTALL_FAILED_UPDATE_INCOMPATIBLE*)
       die "signature clash with the copy already on the TV: it was signed with a different key (a debug build, or any release before v1.6.0). Uninstall first with: adb -s $D uninstall $PACKAGE  - this also deletes the scores and settings kept on the TV." ;;
     *INSTALL_FAILED_OLDER_SDK*)
-      die "this TV is older than Android 8.0, which GrowQuiz needs. Nothing was changed." ;;
+      die "this TV is older than Android 8.0, which TVQuizLock needs. Nothing was changed." ;;
     *INSTALL_FAILED_INSUFFICIENT_STORAGE*)
       die "not enough free space on the TV. Nothing was changed." ;;
     *) die "install failed: $LOG" ;;
@@ -171,7 +171,7 @@ else
   say "  note    SYSTEM_ALERT_WINDOW was not granted; the quiz stays behind another app"
 fi
 
-say "Opening GrowQuiz ..."
+say "Opening TVQuizLock ..."
 "$ADB" -s "$D" shell am start -a android.intent.action.MAIN -c android.intent.category.HOME >/dev/null 2>&1 || true
 
 cat <<EOF

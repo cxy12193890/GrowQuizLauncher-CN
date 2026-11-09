@@ -388,10 +388,7 @@ class MainActivity : Activity() {
         dev.plume.quiz.QuizScheduler.ensureScheduled(this)
         dev.plume.web.WebAdminServer.start(this)
         dev.plume.quiz.TtsProbe.start(this) // the web console reports whether this TV can read aloud
-        // GrowQuiz: the daily compatibility report (device probe + fresh diagnostics) goes home from
-        // here; throttled inside, so this costs nothing on most starts.
-        ReportUpload.maybeUpload(this)
-        // GrowQuiz: load the speech engine now, while the desktop is idle. On TV hardware a Chinese engine
+// GrowQuiz: load the speech engine now, while the desktop is idle. On TV hardware a Chinese engine
         // takes seconds to bring its model up; doing it here means the quiz page can speak the first
         // question at once instead of leaving it silent while the engine loads.
         dev.plume.quiz.QuizVoice.warm(this)
@@ -1035,7 +1032,7 @@ class MainActivity : Activity() {
 
     /**
      * Debug builds: act as another TV and start setup as on a first launch, to walk each device's popups here.
-     * adb shell am start -n dev.plume/.MainActivity --es fake_device fire|google|xiaomi|stock|real --ei fake_sdk 33
+     * adb shell am start -n com.tvquizlock.app/dev.plume.MainActivity --es fake_device fire|google|xiaomi|stock|real --ei fake_sdk 33
      * Only the setup's choices change; the TV's own screens and Home key stay what they are.
      */
     private fun fakeSetup(intent: Intent?): Boolean {
@@ -5152,7 +5149,7 @@ class MainActivity : Activity() {
         }
     }
 
-    /** 关于: this build's version and build number, the project's GitHub repo, the QQ group, and a manual update check. */
+    /** About this product: version, update status, source and licence. */
     private fun showAbout() {
         val info = packageManager.getPackageInfo(packageName, 0)
         val ver = availableUpdate()
@@ -5170,49 +5167,39 @@ class MainActivity : Activity() {
                     toast(getString(R.string.open_link_failed), long = true)
                 }
             },
-            page(getString(R.string.join_qq_group), getString(R.string.qq_group_number)) {
-                // TVs have neither QQ nor a browser; copying the invite keeps the button from being a dead end.
-                var opened = false
-                try {
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(QQ_GROUP_URL)))
-                    opened = true
-                } catch (_: Exception) {
-                }
-                if (!opened) try {
-                    val clip = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    clip.setPrimaryClip(android.content.ClipData.newPlainText("QQ group", QQ_GROUP_URL))
-                    toast(getString(R.string.qq_link_copied), long = true)
-                } catch (_: Exception) {
-                    toast(getString(R.string.open_link_failed), long = true)
-                }
-            },
-        ), styles = listOf(null, RowStyle(R.drawable.ic_github), RowStyle(R.drawable.ic_qq)), back = { renderSettings(R.string.about) })
+        ), styles = listOf(null, RowStyle(R.drawable.ic_github)), back = { renderSettings(R.string.about) })
         @Suppress("DEPRECATION")
         settingsList.addView(label(getString(R.string.about_version, info.versionName, info.versionCode), 13f).apply {
             alpha = 0.7f
             setPadding(dp(14), dp(16), dp(14), 0)
         })
+        settingsList.addView(label(getString(R.string.about_product_info), 13f).apply {
+            alpha = 0.85f
+            maxLines = 4
+            setPadding(dp(14), dp(12), dp(14), dp(4))
+        })
+        settingsList.addView(label(getString(R.string.about_license_info), 12f).apply {
+            alpha = 0.7f
+            maxLines = 4
+            setPadding(dp(14), dp(4), dp(14), dp(8))
+        })
         settingsList.addView(label(GITHUB_URL, 13f).apply {
             alpha = 0.7f
             setPadding(dp(14), dp(4), dp(14), dp(8))
         })
-        // Both links as QRs side by side: a phone scans the screen, which is the only way into the QQ group from a
-        // TV (the TV has neither QQ nor a browser). Both codes are drawn by the app's own QR encoder; a cropped
-        // screenshot of the group card blurred and lost its quiet zone, and phones refused to scan it.
-        // The codes must fit the panel side by side: on a narrow screen they shrink instead of overflowing.
         val panelWidth = minOf(dp(440), (resources.displayMetrics.widthPixels * 0.92f).toInt())
-        val qrSide = minOf(dp(170), (panelWidth - dp(68) - dp(44)) / 2)
-        fun qrColumn(caption: String, url: String) = LinearLayout(this).apply {
+        val qrSide = minOf(dp(170), panelWidth - dp(60))
+        val qrColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            addView(label(caption, 12f).apply {
+            addView(label(getString(R.string.scan_qr_github), 12f).apply {
                 gravity = Gravity.CENTER
                 alpha = 0.8f
                 maxLines = 2
                 ellipsize = null
             })
             addView(ImageView(this@MainActivity).apply {
-                setImageBitmap(qrBitmap(url, qrSide))
+                setImageBitmap(qrBitmap(GITHUB_URL, qrSide))
                 setPadding(0, dp(8), 0, 0)
             })
         }
@@ -5220,20 +5207,14 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setPadding(dp(14), dp(6), dp(14), dp(20))
-            addView(qrColumn(getString(R.string.scan_qr_github), GITHUB_URL))
-            addView(qrColumn(getString(R.string.scan_qr_qq), QQ_GROUP_QR), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                marginStart = dp(44)
-            })
+            addView(qrColumn)
         })
     }
 
-    // ---------- updates (from this fork's own server) ----------
-    // Checked once a day from the home screen; a new version is announced once, then waits in settings.
-    // The server is the nginx directory behind https://www.rengouzi.top:8443/growquiz/ (see tools/publish_update.py):
-    // latest.json tells the version and the APK file name of the newest release. Never the upstream Plume GitHub,
-    // or an update would replace GrowQuiz with Plume. The APK goes to a file in the cache, then into an install
-    // session. TVs without the confirm box open that file in their own installer (see ApkProvider). The file is
-    // deleted when an update fails or is cancelled, and by the new version when it starts (see Updated).
+    // ---------- updates (this project's GitHub Releases) ----------
+    // Checked once a day from the home screen. A new version is announced once, then waits in settings.
+    // The latest public release of this repository supplies both the version and its APK asset URL.
+    // No third-party update server or upstream Plume release is contacted.
 
     @Volatile private var checking = false
     @Volatile private var updating = false
@@ -5248,19 +5229,29 @@ class MainActivity : Activity() {
         checking = true
         if (force) renderUpdatePages()
         io.execute {
-            var file = ""
+            var downloadUrl = ""
             val latest = try {
-                val meta = getJson("$UPDATE_BASE/latest.json")
-                file = meta.optString("apk", "")
-                meta.getString("version").removePrefix("v")
+                val release = getJson(UPDATE_API)
+                val tag = release.getString("tag_name")
+                val assets = release.optJSONArray("assets") ?: throw IOException("release assets missing")
+                for (i in 0 until assets.length()) {
+                    val asset = assets.optJSONObject(i) ?: continue
+                    if (asset.optString("name").endsWith(".apk", ignoreCase = true)) {
+                        downloadUrl = asset.optString("browser_download_url")
+                        break
+                    }
+                }
+                val trustedPrefix = "https://github.com/$UPDATE_REPO/releases/download/"
+                if (!downloadUrl.startsWith(trustedPrefix)) throw IOException("release APK asset missing or URL is not trusted")
+                tag.removePrefix("v")
             } catch (e: Exception) {
-                android.util.Log.w("Plume", "update check failed ($e)")
+                android.util.Log.w("TVQuizLock", "update check failed ($e)")
                 DiagLog.event("update_check_fail", e.message ?: e.javaClass.simpleName)
                 null
             }
             if (latest != null) prefs.edit()
                 .putString("upd_ver", latest)
-                .putString("upd_apk", file)
+                .putString("upd_url", downloadUrl)
                 .putLong("upd_time", System.currentTimeMillis()).apply()
             ui.post {
                 if (isDestroyed) return@post
@@ -5354,9 +5345,11 @@ class MainActivity : Activity() {
         io.execute {
             val ok = try {
                 apk.delete()
-                // The file name the last check wrote; a missing one falls back to the version-based name.
-                val remote = prefs.getString("upd_apk", null)?.takeIf { it.isNotEmpty() } ?: "GrowQuiz-v$ver.apk"
-                openStream("$UPDATE_BASE/$remote").use { input ->
+                // Only download an APK URL returned by this repository's GitHub Releases API.
+                val remote = prefs.getString("upd_url", null)
+                    ?.takeIf { it.startsWith("https://github.com/$UPDATE_REPO/releases/download/") }
+                    ?: throw IOException("No trusted APK URL for release $ver")
+                openStream(remote).use { input ->
                     apk.outputStream().use { input.copyTo(it) }
                 }
                 val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
@@ -6038,8 +6031,12 @@ class MainActivity : Activity() {
     private fun openStream(uri: String): InputStream =
         if (uri.startsWith("http")) {
             (URL(uri).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 5000
-                readTimeout = 5000
+                connectTimeout = 10_000
+                readTimeout = 30_000
+                setRequestProperty("User-Agent", "TVQuizLock")
+                if (uri.startsWith("https://api.github.com/")) {
+                    setRequestProperty("Accept", "application/vnd.github+json")
+                }
             }.inputStream
         } else {
             contentResolver.openInputStream(Uri.parse(uri)) ?: throw IOException("no stream for $uri")
@@ -6272,16 +6269,13 @@ class MainActivity : Activity() {
             60 to R.string.every_60, 1440 to R.string.every_1440,
         )
         const val CHOSEN = "✓"
-        const val REPO = "aradhyas8/Plume_Launcher"
-        /** This fork's own update server: Caddy → nginx static directory; latest.json names the version and APK. */
-        const val UPDATE_BASE = "https://www.rengouzi.top:8443/growquiz"
-        /** The project's own repository, shown and linked on the About page. */
-        const val GITHUB_URL = "https://github.com/1zzzzzlll/GrowQuizLauncher"
-        /** The users' QQ group invite, on the About page; a TV can only copy or QR it, phones join from there. */
-        const val QQ_GROUP_URL = "https://qun.qq.com/universal-share/share?ac=1&authKey=mnDL7L31MX%2BHWlUc902M0kntN21TzkV%2FeCZc6v0TYm1QXUL7%2FLfHkmL%2BCTqPgEzL&busi_data=eyJncm91cENvZGUiOiIxMTMxMjMwNjY5IiwidG9rZW4iOiJGUS85NlgwdDQwOWF2REI5VDhUN3RWUVQrdWs2SHc5U0k1QkY1STl1dzNZUklUbHdRcUZqU2ZPVEpodWY2OFBUIiwidWluIjoiMjkyODY2ODk5In0%3D&data=ILNK8S71lcbC9vvUuE2FO9MC6CnUPsx0RIA1oIhefp6jRZ0v-5SbFxwpqnJD3ubqqZlquj55FvMU3fNYMHkxWQ&svctype=4&tempid=h5_group_info"
-        /** The short invite decoded from the group card's own QR code; short enough for a crisp, scannable code. */
-        const val QQ_GROUP_QR = "https://qm.qq.com/q/IOn0Uo5rEc"
-        const val UPDATE_STATUS = "dev.plume.UPDATE_STATUS"
+        const val REPO = "cxy12193890/GrowQuizLauncher-CN"
+        /** Repository that owns the wallpaper catalogue and this product's releases. */
+        const val UPDATE_REPO = "cxy12193890/GrowQuizLauncher-CN"
+        const val UPDATE_API = "https://api.github.com/repos/cxy12193890/GrowQuizLauncher-CN/releases/latest"
+        /** The project's source repository, shown and linked on the About page. */
+        const val GITHUB_URL = "https://github.com/cxy12193890/GrowQuizLauncher-CN"
+        const val UPDATE_STATUS = "com.tvquizlock.app.UPDATE_STATUS"
         const val WRITE_EPG ="com.android.providers.tv.permission.WRITE_EPG_DATA"
         const val TV_SETTINGS = "com.android.tv.settings"
         const val HDMI = "hdmi:" // App.pkg prefix for HDMI device tiles; the rest is the TV input id

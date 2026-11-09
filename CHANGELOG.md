@@ -1,6 +1,6 @@
 # Changelog
 
-Plume shows the section for its own version in **Plume settings → Updates** after an update.
+TVQuizLock shows the section for its own version in **Plume settings → Updates** after an update.
 After an update, a card on the home screen shows the first 6 entries. Put the 6 most interesting changes first. Put small fixes last, as plain lines.
 The build stops if `versionName` has no section here.
 
@@ -13,6 +13,13 @@ Write every entry in ASD-STE100 Simplified Technical English:
 - Start each entry with "- ". Plume shows each entry as one item. It removes `**` marks.
 
 Put changes that are not released under `## Unreleased`. Rename that heading to the version number when you release.
+
+
+## 1.15.0
+- **产品品牌独立。** 应用显示名改为“电视答题锁”，使用独立 Android 包名。
+- **移除远程诊断上报。** 设备探针不再采集整机指纹；诊断和崩溃记录只保存在电视本机。
+- **更新机制独立。** 改为直接查询本项目 GitHub Releases 并下载本项目 APK。
+- **固定签名策略。** Release 构建不再回退到临时 Debug 签名，避免后续版本无法覆盖更新。
 
 ## 1.14.6
 
