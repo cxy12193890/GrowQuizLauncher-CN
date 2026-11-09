@@ -90,9 +90,15 @@ object ReportUpload {
                 DiagLog.event("report_upload_ok", "", mapOf("events" to events.length().toString()))
                 true
             } else {
+                DiagLog.event("report_upload_fail", "http $code")
                 false
             }
-        } catch (_: Exception) {
+        } catch (e: java.io.IOException) {
+            // Connect vs read: a dead DNS or blocked port reads differently from a slow server.
+            val kind = if (e.message.orEmpty().contains("connect", ignoreCase = true) ||
+                e is java.net.ConnectException || e is java.net.UnknownHostException
+            ) "connect" else "io"
+            DiagLog.event("report_upload_fail", "$kind ${e.message ?: e.javaClass.simpleName}")
             false
         } finally {
             conn.disconnect()

@@ -59,6 +59,7 @@ object QuizVoice {
         e.setSpeechRate(rate)
         e.setPitch(1f)
         ready = true
+        watchSynthesis(e) // synthesis failures after the queue accepted the text land in the report
     }
 
     /** True once the engine can speak. Configures it here if the init callback arrived before the field did. */
@@ -83,10 +84,34 @@ object QuizVoice {
         if (text.isBlank() || !isReady()) return false
         val queue = if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         return try {
-            engine?.speak(text, queue, null, "quiz_${utterance++}") == TextToSpeech.SUCCESS
+            val ok = engine?.speak(text, queue, null, "quiz_${utterance++}") == TextToSpeech.SUCCESS
+            if (!ok) dev.plume.DiagLog.event("tts_speak_fail", "queue rejected")
+            ok
         } catch (e: Exception) {
             android.util.Log.w("GrowQuiz", "tts speak failed", e)
+            dev.plume.DiagLog.event("tts_speak_fail", e.message ?: e.javaClass.simpleName)
             false
+        }
+    }
+
+    /**
+     * GrowQuiz: an engine takes the text and then fails in the synthesis, which [speak] cannot see —
+     * the report needs the utterance callback for that. Installed once, when the engine is up.
+     */
+    private fun watchSynthesis(e: TextToSpeech) {
+        try {
+            e.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+                override fun onError(utteranceId: String?) =
+                    dev.plume.DiagLog.event("tts_speak_fail", "utterance $utteranceId")
+
+                @Deprecated("Deprecated in Java")
+                override fun onError(utteranceId: String?, errorCode: Int) =
+                    dev.plume.DiagLog.event("tts_speak_fail", "utterance $utteranceId code=$errorCode")
+
+                override fun onStart(utteranceId: String?) {}
+                override fun onDone(utteranceId: String?) {}
+            })
+        } catch (_: Exception) {
         }
     }
 

@@ -7,7 +7,11 @@ import dev.plume.DiagLog
 
 class QuizAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (!QuizPrefs(context).enabled) return
+        val prefs = QuizPrefs(context)
+        if (!prefs.enabled) return
+        // GrowQuiz: read the due time before rescheduling overwrites it, so the event can say how
+        // late the alarm really was — the number that tells an inexact fallback from a broken alarm.
+        val due = prefs.nextTriggerAt
         // Schedule first so an unanswered or interrupted quiz never disables future sessions.
         QuizScheduler.reschedule(context)
         // GrowQuiz: the alarm wakes this process anyway, so a TV nobody opens still reports on
@@ -15,7 +19,9 @@ class QuizAlarmReceiver : BroadcastReceiver() {
         dev.plume.ReportUpload.maybeUpload(context)
         // GrowQuiz: the report pairs this event with QuizActivity's quiz_open; an alarm_fired with
         // no quiz_open soon after means the firmware swallowed the start (background-start rules).
-        DiagLog.event("alarm_fired")
+        val kv = mutableMapOf<String, String>()
+        if (due > 0) kv["lateMs"] = (System.currentTimeMillis() - due).toString()
+        DiagLog.event("alarm_fired", "", kv)
         try {
             context.startActivity(
                 Intent(context, QuizActivity::class.java).addFlags(

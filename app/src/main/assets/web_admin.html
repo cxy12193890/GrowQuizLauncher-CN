@@ -556,13 +556,13 @@
         how.innerHTML = '已拦住 ' + okCount + ' 次，最近一次 ' + ago(okAt) + '。';
       }
       // 答题时间精度自检：Android 12+ 未授「闹钟和提醒」时，触发时间会被系统推迟数分钟。
-      // 客服可按提示执行 adb 命令代授，无需家长进设置翻菜单。
+      // 客户可按提示在电脑上执行 adb 命令代授，无需进设置翻菜单。
       const aHead = $('alarmHead'), aHow = $('alarmHow');
       if (s.exactAlarm === false) {
         aHead.className = 'check-h chk-bad';
         aHead.textContent = '答题时间：缺少权限，可能被推迟';
         aHow.innerHTML = '在电视「设置 → 应用 → 特殊权限 → 闹钟和提醒」里允许本应用，'
-          + '或由客服用 adb 代授（Android 12 及以上）：<br>'
+          + '或用电脑连电视 adb 代授（Android 12 及以上）：<br>'
           + '<code>adb shell pm grant dev.plume.growquiz android.permission.SCHEDULE_EXACT_ALARM</code><br>'
           + '修改后这里会立即变绿，无需重启。';
       } else {
@@ -571,13 +571,13 @@
         aHow.innerHTML = '';
       }
       // 主屏幕键服务自检：服务没开 → 按键拦截、厂商桌面切回、开机补课都不工作。
-      // 客服可按提示执行 adb 命令代开；TCL/雷鸟首次绑定可能要在电视上打开一次本应用。
+      // 客户可按提示在电脑上执行 adb 命令代开；TCL/雷鸟首次绑定可能要在电视上打开一次本应用。
       const hHead = $('homeHead'), hHow = $('homeHow');
       if (!s.a11yEnabled) {
         hHead.className = 'check-h chk-bad';
         hHead.textContent = '主屏幕键服务：未开启';
         hHow.innerHTML = '在电视「设置 → 无障碍」里开启「宝贝成长桌面（主屏幕键）」服务，'
-          + '或由客服用 adb 代开：<br>'
+          + '或用电脑连电视 adb 代开：<br>'
           + '<code>adb shell settings put secure enabled_accessibility_services '
           + 'dev.plume.growquiz/dev.plume.HomeOverride</code><br>'
           + '<code>adb shell settings put secure accessibility_enabled 1</code><br>'

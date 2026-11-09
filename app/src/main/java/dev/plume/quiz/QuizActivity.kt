@@ -507,6 +507,7 @@ class QuizActivity : Activity() {
     private fun finishAfterCorrect() {
         justFinished = true // MainActivity skips the admin prompt right after a quiz
         releaseSound() // hand the sound back before the video is shown again
+        dev.plume.DiagLog.event("quiz_done") // the happy end; anything else is quiz_abandoned below
         QuizPrefs(this).apply {
             wrongStreak = 0 // a finished session proves real work: every anti-guess counter resets
             snapWrongs = 0
@@ -647,6 +648,11 @@ class QuizActivity : Activity() {
         ui.removeCallbacksAndMessages(null)
         stopReading()
         releaseSound()
+        // GrowQuiz: a page that dies with a question unanswered — a system kill, a power cut, an
+        // update install — leaves quizActive set, so the page comes back; the report says which.
+        // A crash has its own event, and a screen rotation is rare on a TV and counts as neither.
+        if (!solved && !justFinished) dev.plume.DiagLog.event("quiz_abandoned",
+            "", mapOf("finishing" to isFinishing.toString()))
         // The engine itself stays up: it belongs to the app, and shutting it down here would make the next
         // quiz pay the model load again.
         super.onDestroy()

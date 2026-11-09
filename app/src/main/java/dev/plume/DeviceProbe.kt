@@ -23,6 +23,7 @@ object DeviceProbe {
         val pm = context.packageManager
         val info = pm.getPackageInfo(context.packageName, 0)
         val dm = context.resources.displayMetrics
+        val quiz = dev.plume.quiz.QuizPrefs(context)
         return JSONObject()
             .put("vendor", Vendor.current)
             .put("brand", Build.BRAND)
@@ -50,6 +51,14 @@ object DeviceProbe {
             .put("deviceOwner", deviceOwner(context))
             .put("defaultHome", defaultHome(context))
             .put("homeCandidates", homeCandidates(context))
+            // GrowQuiz: the quiz schedule as the app itself sees it, so the server can compare "when
+            // the alarm should have fired" with the events that say when it did. A timezone comes
+            // along: a wrong clock is its own class of "the alarm never fired" reports.
+            .put("quizEnabled", quiz.enabled)
+            .put("quizNextAt", quiz.nextTriggerAt)
+            .put("quizIntervalMin", quiz.intervalMinutes)
+            .put("timezone", java.util.TimeZone.getDefault().id)
+            .put("webAdminPort", dev.plume.web.WebAdminServer.port)
     }
 
     /** Speech engines that answer the standard TTS intent, comma separated ("" = none on board). */
