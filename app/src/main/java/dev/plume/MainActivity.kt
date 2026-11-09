@@ -2803,7 +2803,7 @@ class MainActivity : Activity() {
                 showWeather()
                 renderSettings(R.string.weather_units)
             },
-            R.string.weather_location to Triple(getString(R.string.weather_location), if (manualCity()) prefs.getString("geo_city", null) ?: "" else "Automatic") { pickCity() },
+            R.string.weather_location to Triple(getString(R.string.weather_location), if (manualCity()) prefs.getString("geo_city", null) ?: "" else "未设置") { pickCity() },
             R.string.screensaver to Triple(getString(R.string.screensaver), when {
                 downloading -> getString(R.string.downloading_gallery)
                 !galleryOn() -> screensaverName()
@@ -5378,7 +5378,8 @@ class MainActivity : Activity() {
             if (status.isNotEmpty()) addView(label(status, 12f).apply { alpha = 0.6f; setPadding(dp(14), dp(8), 0, 0) })
         }
         val rows = listOf(page(getString(R.string.automatic_ip), if (manualCity()) "" else CHOSEN) {
-            prefs.edit().remove("geo_manual").remove("geo_time").remove("wx_time").apply()
+            prefs.edit().remove("geo_manual").remove("geo_time").remove("geo_city").remove("geo_lat").remove("geo_lon")
+                .remove("wx_time").remove("wx_temp").remove("wx_code").remove("wx_day").apply()
             refreshWeather()
             renderSettings(R.string.weather_location)
         }) + found.orEmpty().map { c ->
