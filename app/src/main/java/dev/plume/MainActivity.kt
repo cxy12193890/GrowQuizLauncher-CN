@@ -2024,6 +2024,14 @@ class MainActivity : Activity() {
         previewBack?.invoke() ?: pickWallpaper(dark, choice)
         previewBack = null
     }
+    /** Remove only known third-party catalogue videos that are no longer selected; never delete family uploads. */
+    private fun cleanUnusedVideoWallpapers(dir: File) {
+        val selected = listOfNotNull(prefs.getString("wp_light", null), prefs.getString("wp_dark", null)).toSet()
+        val catalogueFiles = videoScenes(this).map { it.file }.toSet()
+        dir.listFiles { file -> file.isFile && file.extension.equals("mp4", true) }?.forEach { file ->
+            if (file.name in catalogueFiles && "video:${file.name}" !in selected) file.delete()
+        }
+    }
 
     /** Local videos selected or uploaded by the family; third-party scene downloads are not offered. */
     private fun pickVideoWallpaper(forDark: Boolean) {
