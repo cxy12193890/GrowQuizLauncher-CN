@@ -790,7 +790,8 @@ class MainActivity : Activity() {
                     setTypeface(typeface, Typeface.BOLD)
                 })
                 addView(TextView(this@MainActivity).apply {
-                    text = getString(R.string.web_admin_prompt_message, dev.plume.web.WebAdminServer.url())
+                    text = getString(R.string.web_admin_prompt_message, dev.plume.web.WebAdminServer.url(this)) +
+    dev.plume.web.WebAdminServer.certificateFingerprint(this)?.let { "\n\nTLS 证书 SHA-256：\n$it\n首次访问时，核对指纹后再允许浏览器继续。" }.orEmpty()
                     textSize = if (small) 16f else 20f
                     setTextColor(Color.rgb(203, 218, 243))
                     setLineSpacing(0f, 1.25f)
@@ -800,7 +801,7 @@ class MainActivity : Activity() {
                 // Only when the TV actually has a LAN address — on localhost there is nothing to scan.
                 if (dev.plume.web.WebAdminServer.hasLanUrl()) {
                     addView(ImageView(this@MainActivity).apply {
-                        setImageBitmap(qrBitmap(dev.plume.web.WebAdminServer.url(), dp(150)))
+                        setImageBitmap(qrBitmap(dev.plume.web.WebAdminServer.url(this), dp(150)))
                     }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                         gravity = Gravity.CENTER_HORIZONTAL
                         topMargin = dp(8)
@@ -2655,7 +2656,7 @@ class MainActivity : Activity() {
         val active = AtomicBoolean(true)
         val status = label(getString(R.string.waiting_photo), 14f).apply { gravity = Gravity.CENTER; maxLines = 2 }
         val server = try {
-            UploadServer((1000..9999).random().toString(), File.createTempFile("upload-", ".tmp", cacheDir)) { file, video ->
+            UploadServer(this, ip, (1000..9999).random().toString(), File.createTempFile("upload-", ".tmp", cacheDir)) { file, video ->
                 if (!active.get()) return@UploadServer null
                 val saved = (if (video) importVideoWallpaper(file, dir) else importWallpaper(file, dir)) ?: return@UploadServer null
                 ui.post {
@@ -2674,7 +2675,7 @@ class MainActivity : Activity() {
             return toast(getString(R.string.upload_failed), long = true)
         }
         upload = server
-        val url = "http://$ip:${server.port}/${server.code}"
+        val url = "https://$ip:${server.port}/${server.code}"
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -3034,7 +3035,7 @@ class MainActivity : Activity() {
             group(R.string.group_tv) +
             sectionRow(R.string.section_remote_home) +
             Triple(R.string.lock_layout, rows[R.string.lock_layout]!!, RowStyle(R.drawable.ms_lock, help = getString(R.string.lock_note))) +
-            Triple(R.string.web_admin, page(getString(R.string.web_admin), dev.plume.web.WebAdminServer.url()) {
+            Triple(R.string.web_admin, page(getString(R.string.web_admin), dev.plume.web.WebAdminServer.url(this)) {
                 // GrowQuiz: re-show the startup prompt (same Wi-Fi + admin URL), as on every return from background.
                 closeLauncherSettings()
                 showWebAdminPrompt()
@@ -5442,8 +5443,7 @@ class MainActivity : Activity() {
     }
 
     // ---------- weather (under the date) ----------
-    // Location comes from the public IP (ipwho.is): a TV has no GPS and Android TV no location service.
-    // Weather is Open-Meteo. Both are free and keyless. We always fetch Celsius and convert, so
+    // Location is chosen explicitly by the parent; weather data is fetched from Open-Meteo. We always fetch Celsius and convert, so
     // switching units needs no refetch. The last reading is kept in prefs and shows instantly.
 
     private val weatherTick = object : Runnable {
@@ -5458,15 +5458,8 @@ class MainActivity : Activity() {
         if (System.currentTimeMillis() - prefs.getLong("wx_time", 0) < 25 * 60_000L) return
         io.execute {
             try {
-                if (!manualCity() && System.currentTimeMillis() - prefs.getLong("geo_time", 0) > 6 * 3600_000L) {
-                    val geo = getJson("https://ipwho.is/?fields=success,city,latitude,longitude")
-                    if (geo.optBoolean("success")) prefs.edit()
-                        .putString("geo_city", geo.getString("city"))
-                        .putFloat("geo_lat", geo.getDouble("latitude").toFloat())
-                        .putFloat("geo_lon", geo.getDouble("longitude").toFloat())
-                        .putLong("geo_time", System.currentTimeMillis()).apply()
-                }
-                if (!prefs.contains("geo_lat")) return@execute
+                // Location is opt-in: never infer a household city from its public IP address.
+                if (!manualCity() || !prefs.contains("geo_lat") || !prefs.contains("geo_lon")) return@execute
                 val now = getJson("https://api.open-meteo.com/v1/forecast?latitude=${prefs.getFloat("geo_lat", 0f)}" +
                     "&longitude=${prefs.getFloat("geo_lon", 0f)}&current=temperature_2m,weather_code,is_day").getJSONObject("current")
                 prefs.edit()
