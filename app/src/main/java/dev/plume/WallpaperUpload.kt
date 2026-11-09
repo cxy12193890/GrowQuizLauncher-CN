@@ -118,7 +118,8 @@ internal class UploadServer(context: Context, ip: String, val code: String, priv
         out.write(("HTTP/1.1 $status ${if (status == 200) "OK" else "Error"}\r\n" +
             "Content-Type: $type\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n" +
             "Cache-Control: no-store, max-age=0\r\nX-Content-Type-Options: nosniff\r\n" +
-            "Referrer-Policy: no-referrer\r\n\r\n").toByteArray())
+            "Referrer-Policy: no-referrer\r\nX-Frame-Options: DENY\r\n" +
+            "Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'\r\n\r\n").toByteArray())
         out.write(bytes)
         out.flush()
     }
