@@ -419,6 +419,10 @@ class MainActivity : Activity() {
         wifi = findViewById(R.id.wifi)
         // New installs use neutral colours; third-party wallpaper assets are excluded until their rights are verified.
         val info = packageManager.getPackageInfo(packageName, 0)
+        // If an older build selected the unverified painting/Aerial screensaver, restore the TV's previous screensaver.
+        if (galleryOn() && photoScreensaver() == null && checkSelfPermission(WRITE_SECURE) == PackageManager.PERMISSION_GRANTED) {
+            stopGallery()
+        }
         if (info.firstInstallTime == info.lastUpdateTime && !prefs.contains("wp_light") && !prefs.contains("wp_dark"))
             prefs.edit().putString("wp_light", FIRST_WALLPAPER).putString("wp_dark", FIRST_WALLPAPER)
                 .putString("theme", "light").putString("glass_style", GlassStyle.FROSTED.key).apply()
