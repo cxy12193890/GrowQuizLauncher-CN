@@ -653,7 +653,8 @@ class MainActivity : Activity() {
         applicationContext.getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(net)
         getSystemService(TvInputManager::class.java)?.unregisterCallback(inputCallback)
         upload?.stop()
-        dev.plume.web.WebAdminServer.stop()
+        // WebAdminServer deliberately keeps running here: it now belongs to the process (see App),
+        // so a backgrounded launcher must not take the parents' console down with it.
         try {
             contentResolver.unregisterContentObserver(photoObserver)
         } catch (e: Exception) {

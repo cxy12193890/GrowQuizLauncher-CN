@@ -14,6 +14,10 @@ Write every entry in ASD-STE100 Simplified Technical English:
 
 Put changes that are not released under `## Unreleased`. Rename that heading to the version number when you release.
 
+## 1.14.6
+
+- **管理台不再随后台关闭消失。** 部分电视（首见于华为智慧屏）一切换到别的应用就关闭本桌面。管理台改为随进程运行：无障碍服务、答题闹钟、更新检查任一拉起进程，管理台都会自动恢复。
+
 ## 1.14.5
 
 - **系统设置打不开不再闪退。** 部分电视固件没有系统设置页面（首见于华为智慧屏）。点顶栏「系统设置」时改为提示「本机没有可打开的系统设置页面」，并记录一次上报事件。
