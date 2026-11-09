@@ -4781,34 +4781,6 @@ class MainActivity : Activity() {
         openSettings(Settings.ACTION_SETTINGS)
     }
 
-    @Volatile private var downloading = false
-
-    /** Fetches [files] from [url] into [dir], all or nothing; [done] runs on the UI thread with whether they all arrived. */
-    private fun download(url: String, files: List<String>, dir: File, start: String, failed: Int, done: (Boolean) -> Unit) {
-        if (downloading) return
-        downloading = true
-        toast(start)
-        Thread {
-            val part = File(dir.path + ".part").apply { deleteRecursively(); mkdirs() }
-            val ok = try {
-                for (f in files) openStream(url + f).use { input ->
-                    File(part, f).outputStream().use { input.copyTo(it) }
-                }
-                dir.deleteRecursively()
-                part.renameTo(dir)
-            } catch (e: Exception) {
-                android.util.Log.w("Plume", "download from $url failed ($e)")
-                part.deleteRecursively()
-                false
-            }
-            ui.post {
-                if (isDestroyed) return@post
-                downloading = false
-                if (!ok) toast(getString(failed), long = true)
-                done(ok)
-            }
-        }.start()
-    }
 
     /** Starts whichever screensaver is set, through SystemUI's "dream now" entry point. */
     private fun testScreensaver() {
