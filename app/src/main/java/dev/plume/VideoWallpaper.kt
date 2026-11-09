@@ -94,7 +94,6 @@ internal const val VIDEO_LIMIT = 350L * 1024 * 1024
 
 internal data class VideoScene(val source: String, val category: String, val name: String, val file: String, val url: String)
 
-private var cachedScenes: List<VideoScene>? = null
 
 internal fun parseVideoScenes(input: InputStream): List<VideoScene> {
     val list = mutableListOf<VideoScene>()
@@ -109,10 +108,9 @@ internal fun parseVideoScenes(input: InputStream): List<VideoScene> {
     return list
 }
 
-internal fun videoScenes(context: Context): List<VideoScene> {
-    // Third-party NASA, Apple and Amazon scene catalogues are disabled until the content terms are verified.
-    return emptyList()
-}
+internal const val THIRD_PARTY_SCENES_ENABLED = false
+
+internal fun videoScenes(context: Context): List<VideoScene> = emptyList()
 
 /** Download on selection only. A partial or oversized file never replaces a saved video. */
 internal fun downloadVideoScene(item: VideoScene, destination: File, cancelled: AtomicBoolean, progress: (Int) -> Unit): Boolean {
