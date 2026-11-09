@@ -946,6 +946,9 @@ object WebAdminServer {
             .append("X-Content-Type-Options: nosniff\r\n")
             .append("Referrer-Policy: no-referrer\r\n")
             .append("Permissions-Policy: camera=(), microphone=(), geolocation=()\r\n")
+            .append("X-Frame-Options: DENY\r\n")
+            .append("Cross-Origin-Resource-Policy: same-origin\r\n")
+            .append("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'\r\n")
         cookie?.let { head.append("Set-Cookie: $it\r\n") }
         head.append("\r\n")
         out.write(head.toString().toByteArray(Charsets.UTF_8))
