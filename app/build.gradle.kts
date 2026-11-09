@@ -4,7 +4,7 @@ plugins {
     id("com.android.application")
 }
 
-// No dependencies on purpose: framework Views only, to keep RAM and APK size minimal.
+// Small cryptography dependency for per-install TLS certificates on the local parent console.
 android {
     namespace = "dev.plume"
     compileSdk = 36
@@ -85,5 +85,7 @@ android {
 }
 
 dependencies {
+    implementation("org.bouncycastle:bcprov-jdk18on:1.80")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.80")
     testImplementation("junit:junit:4.13.2")
 }
