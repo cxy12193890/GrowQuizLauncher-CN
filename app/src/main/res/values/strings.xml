@@ -57,6 +57,7 @@
     <string name="photos_permission">宝贝成长桌面需要访问照片权限才能显示你的文件夹</string>
     <string name="home_off_hint">请在“设置 → 系统 → 无障碍”中关闭“宝贝成长桌面：主屏幕键”</string>
     <string name="home_on_hint">请在“设置 → 系统 → 无障碍”中开启“宝贝成长桌面：主屏幕键”</string>
+    <string name="settings_missing">本机没有可打开的系统设置页面</string>
     <string name="dark_wallpaper">深色壁纸</string>
     <string name="wallpaper">壁纸</string>
     <string name="light_wallpaper">浅色壁纸</string>

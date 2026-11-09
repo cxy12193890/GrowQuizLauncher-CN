@@ -14,6 +14,10 @@ Write every entry in ASD-STE100 Simplified Technical English:
 
 Put changes that are not released under `## Unreleased`. Rename that heading to the version number when you release.
 
+## 1.14.5
+
+- **系统设置打不开不再闪退。** 部分电视固件没有系统设置页面（首见于华为智慧屏）。点顶栏「系统设置」时改为提示「本机没有可打开的系统设置页面」，并记录一次上报事件。
+
 ## 1.14.4
 
 - **答题没弹出来有记录。** 闹钟响过而答题页两分钟内没出现，记为「弹出被拦（静默）」。事件附品牌、悬浮窗权限与系统版本。此前只有系统抛异常才记录，静默拦截看不见。首批上报里一台手机响了 20 次闹钟只弹出 1 次，就是这种情况。

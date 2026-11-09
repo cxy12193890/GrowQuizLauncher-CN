@@ -3868,8 +3868,16 @@ class MainActivity : Activity() {
     private fun openSettings(action: String, data: Uri? = null) {
         try {
             startActivity(Intent(action, data))
+            return
         } catch (e: Exception) {
+        }
+        // Some TV firmwares ship no Settings app at all (first seen on a Huawei vision screen,
+        // where the top-bar settings button crashed the launcher three times in a row).
+        try {
             startActivity(Intent(Settings.ACTION_SETTINGS))
+        } catch (e: Exception) {
+            dev.plume.DiagLog.event("settings_open_fail", action)
+            toast(getString(R.string.settings_missing), long = true, system = true)
         }
     }
 
