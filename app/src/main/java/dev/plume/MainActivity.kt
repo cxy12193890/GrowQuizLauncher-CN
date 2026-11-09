@@ -801,7 +801,7 @@ class MainActivity : Activity() {
                 // Only when the TV actually has a LAN address — on localhost there is nothing to scan.
                 if (dev.plume.web.WebAdminServer.hasLanUrl()) {
                     addView(ImageView(this@MainActivity).apply {
-                        setImageBitmap(qrBitmap(dev.plume.web.WebAdminServer.url(this), dp(150)))
+                        setImageBitmap(qrBitmap(dev.plume.web.WebAdminServer.url(this@MainActivity), dp(150)))
                     }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                         gravity = Gravity.CENTER_HORIZONTAL
                         topMargin = dp(8)
