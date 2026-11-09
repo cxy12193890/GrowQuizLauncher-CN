@@ -2564,7 +2564,7 @@ class MainActivity : Activity() {
             setPadding(0, dp(4), 0, dp(12))
             addView(ImageView(this@MainActivity).apply { setImageBitmap(qrBitmap(url, dp(200))) })
             addView(label(url, 14f).apply { gravity = Gravity.CENTER; setPadding(0, dp(12), 0, dp(4)) })
-            dev.plume.web.WebAdminServer.certificateFingerprint(this@MainActivity)?.let { fingerprint ->
+            dev.plume.web.WebAdminServer.certificateFingerprint(this@MainActivity, ip)?.let { fingerprint ->
                 addView(label("TLS 证书 SHA-256：$fingerprint", 10f).apply {
                     gravity = Gravity.CENTER; maxLines = 4; setPadding(0, dp(4), 0, dp(8)); alpha = 0.75f
                 })
