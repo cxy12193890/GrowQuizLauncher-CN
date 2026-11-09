@@ -23,6 +23,26 @@ import java.net.URLDecoder
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Collections
+import java.io.File
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.math.BigInteger
+import java.security.KeyPairGenerator
+import java.security.KeyStore
+import java.util.Date
+import javax.net.ssl.KeyManagerFactory
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLServerSocket
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
+import org.bouncycastle.asn1.x500.X500Name
+import org.bouncycastle.asn1.x509.Extension
+import org.bouncycastle.asn1.x509.GeneralName
+import org.bouncycastle.asn1.x509.GeneralNames
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 
 /**
  * A small built-in admin console for the LAN: one page, password-protected, no external libraries.
@@ -34,7 +54,11 @@ object WebAdminServer {
     private const val KEY_SALT = "password_salt"
     private const val COOKIE = "session"
     private const val SESSION_MS = 24L * 60 * 60 * 1000
-    private const val MIN_PASSWORD = 6
+    private const val MIN_PASSWORD = 12
+    private const val PBKDF2_ITERATIONS = 120_000
+    private const val LOGIN_WINDOW_MS = 15L * 60 * 1000
+    private const val LOGIN_BLOCK_MS = 15L * 60 * 1000
+    private const val LOGIN_MAX_FAILURES = 5
     private const val MAX_BODY = 64L * 1024
     private const val MAX_IMPORT_BODY = 8L * 1024 * 1024
     private const val MAX_IMPORT_QUESTIONS = 5000
@@ -42,9 +66,13 @@ object WebAdminServer {
 
     private val sessions = HashMap<String, Long>()
     private val random = SecureRandom()
+    private val setupToken = randomHex(24)
+    private data class LoginGuard(var windowStart: Long, var failures: Int, var blockedUntil: Long)
+    private val loginGuards = HashMap<String, LoginGuard>()
+    private val setupAuthorized = HashMap<String, Long>()
     private val main = Handler(Looper.getMainLooper())
 
-    @Volatile private var server: ServerSocket? = null
+    @Volatile private var server: SSLServerSocket? = null
     @Volatile private var running = false
 
     val port: Int get() = server?.localPort ?: 8081
@@ -52,14 +80,14 @@ object WebAdminServer {
     fun start(context: Context) {
         if (running) return
         val app = context.applicationContext
+        val ip = localIpAddress() ?: run {
+            dev.plume.DiagLog.event("web_admin_fail", "no LAN IPv4 address")
+            return
+        }
         server = try {
-            ServerSocket(8081)
+            createTlsServer(app, ip, 8081)
         } catch (_: IOException) {
-            try {
-                ServerSocket(0) // 8081 busy: any free port, the settings row shows it
-            } catch (second: IOException) {
-                // The parents' console is the local way to reach this TV's settings; record a local
-                // diagnostic event if the port cannot be opened.
+            try { createTlsServer(app, ip, 0) } catch (second: Exception) {
                 dev.plume.DiagLog.event("web_admin_fail", second.message ?: second.javaClass.simpleName)
                 null
             }
@@ -77,12 +105,26 @@ object WebAdminServer {
         }
         server = null
         sessions.clear()
+        synchronized(loginGuards) { loginGuards.clear() }
+        synchronized(setupAuthorized) { setupAuthorized.clear() }
     }
 
-    fun url(): String {
-        val address = localIpAddress() ?: return "http://localhost:$port"
-        return "http://$address:$port"
+    fun url(context: Context? = null): String {
+        val address = localIpAddress() ?: return "https://localhost:$port"
+        val base = "https://$address:$port"
+        return if (context != null && !hasPassword(context)) "$base/?setup=$setupToken" else base
     }
+
+    fun certificateFingerprint(context: Context): String? = runCatching {
+        val ip = localIpAddress() ?: return null
+        val safe = ip.replace(':', '_').replace('%', '_')
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val password = prefs.getString("tls_password_$safe", null) ?: return null
+        val store = KeyStore.getInstance("PKCS12")
+        File(context.filesDir, "web-admin-$safe.p12").inputStream().use { store.load(it, password.toCharArray()) }
+        val cert = store.getCertificate("tvquizlock") as java.security.cert.X509Certificate
+        MessageDigest.getInstance("SHA-256").digest(cert.encoded).joinToString(":") { "%02X".format(it) }
+    }.getOrNull()
 
     // ---- one-off QR unlock: the TV's password dialog can be answered from a phone instead ----
 
@@ -118,7 +160,7 @@ object WebAdminServer {
     fun unlockUrl(token: String) = url() + "/unlock?t=" + token
 
     /** Whether the TV has a LAN address the phone can reach; the QR is pointless on localhost. */
-    fun hasLanUrl(): Boolean = !url().startsWith("http://localhost")
+    fun hasLanUrl(): Boolean = !url().startsWith("https://localhost")
 
     /** True once the family has set the admin password; the TV-side settings entries gate on this too. */
     fun hasPassword(context: Context): Boolean =
@@ -129,7 +171,9 @@ object WebAdminServer {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val salt = prefs.getString(KEY_SALT, null) ?: return false
         val stored = prefs.getString(KEY_HASH, null) ?: return false
-        return sha256(salt + password) == stored
+        if (!verifyStoredPassword(password, salt, stored)) return false
+        if (!stored.startsWith("pbkdf2$")) storePassword(context, password)
+        return true
     }
 
     @Volatile private var bank: QuestionBank? = null
@@ -137,6 +181,86 @@ object WebAdminServer {
     /** One bank per server run; mutations reload it, and disabled state lives in shared preferences. */
     private fun bank(context: Context): QuestionBank =
         bank ?: QuestionBank(context.applicationContext).also { bank = it }
+
+    private fun createTlsServer(context: Context, ip: String, port: Int): SSLServerSocket {
+        val safe = ip.replace(':', '_').replace('%', '_')
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val passwordKey = "tls_password_$safe"
+        val password = prefs.getString(passwordKey, null) ?: randomHex(32).also { prefs.edit().putString(passwordKey, it).apply() }
+        val file = File(context.filesDir, "web-admin-$safe.p12")
+        val store = KeyStore.getInstance("PKCS12")
+        if (file.exists()) {
+            file.inputStream().use { store.load(it, password.toCharArray()) }
+        } else {
+            store.load(null, password.toCharArray())
+            val generator = KeyPairGenerator.getInstance("RSA")
+            generator.initialize(2048, random)
+            val pair = generator.generateKeyPair()
+            val now = Date()
+            val subject = X500Name("CN=$ip")
+            val builder = JcaX509v3CertificateBuilder(subject, BigInteger.valueOf(now.time), now, Date(now.time + 10L * 365 * 24 * 60 * 60 * 1000), subject, pair.public)
+            builder.addExtension(Extension.subjectAlternativeName, false, GeneralNames(GeneralName(GeneralName.iPAddress, ip)))
+            val provider = BouncyCastleProvider()
+            val cert = JcaX509CertificateConverter().setProvider(provider).getCertificate(
+                builder.build(JcaContentSignerBuilder("SHA256withRSA").setProvider(provider).build(pair.private))
+            )
+            cert.checkValidity(now)
+            cert.verify(pair.public)
+            store.setKeyEntry("tvquizlock", pair.private, password.toCharArray(), arrayOf(cert))
+            file.outputStream().use { store.store(it, password.toCharArray()) }
+        }
+        val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
+        kmf.init(store, password.toCharArray())
+        val tls = SSLContext.getInstance("TLS")
+        tls.init(kmf.keyManagers, null, random)
+        val socket = tls.serverSocketFactory.createServerSocket() as SSLServerSocket
+        socket.enabledProtocols = socket.supportedProtocols.filter { it == "TLSv1.3" || it == "TLSv1.2" }.toTypedArray()
+        socket.bind(InetSocketAddress(InetAddress.getByName(ip), port))
+        return socket
+    }
+
+    private fun storePassword(context: Context, password: String) {
+        val salt = randomHex(16)
+        val hash = listOf("pbkdf2", PBKDF2_ITERATIONS.toString(), passwordHash(password, salt)).joinToString("$")
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_SALT, salt).putString(KEY_HASH, hash).commit()
+    }
+
+    private fun passwordHash(password: String, saltHex: String, iterations: Int = PBKDF2_ITERATIONS): String {
+        val salt = ByteArray(saltHex.length / 2) { i -> saltHex.substring(i * 2, i * 2 + 2).toInt(16).toByte() }
+        val spec = PBEKeySpec(password.toCharArray(), salt, iterations, 256)
+        return try { SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded.joinToString("") { "%02x".format(it) } }
+        finally { spec.clearPassword() }
+    }
+
+    private fun verifyStoredPassword(password: String, salt: String, stored: String): Boolean {
+        if (stored.startsWith("pbkdf2$")) {
+            val parts = stored.split(36.toChar())
+            val iterations = parts.getOrNull(1)?.toIntOrNull() ?: return false
+            val expected = parts.getOrNull(2) ?: return false
+            if (iterations !in 50_000..500_000) return false
+            val actual = runCatching { passwordHash(password, salt, iterations) }.getOrNull() ?: return false
+            return MessageDigest.isEqual(actual.toByteArray(Charsets.UTF_8), expected.toByteArray(Charsets.UTF_8))
+        }
+        return MessageDigest.isEqual(sha256(salt + password).toByteArray(Charsets.UTF_8), stored.toByteArray(Charsets.UTF_8))
+    }
+
+    @Synchronized private fun loginBlockedMs(ip: String): Long {
+        val now = System.currentTimeMillis()
+        val guard = loginGuards[ip] ?: return 0L
+        if (guard.blockedUntil > now) return guard.blockedUntil - now
+        if (now - guard.windowStart > LOGIN_WINDOW_MS) loginGuards.remove(ip)
+        return 0L
+    }
+
+    @Synchronized private fun recordLoginFailure(ip: String): Long {
+        val now = System.currentTimeMillis()
+        val guard = loginGuards[ip]?.takeIf { now - it.windowStart <= LOGIN_WINDOW_MS } ?: LoginGuard(now, 0, 0L).also { loginGuards[ip] = it }
+        guard.failures++
+        if (guard.failures >= LOGIN_MAX_FAILURES) guard.blockedUntil = now + LOGIN_BLOCK_MS
+        return (guard.blockedUntil - now).coerceAtLeast(0L)
+    }
+
+    @Synchronized private fun clearLoginFailures(ip: String) { loginGuards.remove(ip) }
 
     private fun serve(context: Context) {
         val socket = server ?: return
@@ -148,6 +272,7 @@ object WebAdminServer {
             }
             try {
                 client.soTimeout = 15_000
+                (client as javax.net.ssl.SSLSocket).startHandshake()
                 handle(client, context)
             } catch (_: Exception) {
             } finally {
@@ -160,6 +285,7 @@ object WebAdminServer {
     }
 
     private fun handle(socket: Socket, context: Context) {
+        val clientIp = socket.inetAddress?.hostAddress ?: "unknown"
         val input = BufferedInputStream(socket.getInputStream())
         val out = socket.getOutputStream()
         val request = readLine(input) ?: return
@@ -181,6 +307,9 @@ object WebAdminServer {
 
         when {
             path == "/" && method == "GET" -> {
+                if (!hasPassword(context) && query["setup"] == setupToken) {
+                    synchronized(setupAuthorized) { setupAuthorized[clientIp] = System.currentTimeMillis() + 10 * 60_000L }
+                }
                 val page = context.assets.open("web_admin.html").use { it.readBytes() }.toString(Charsets.UTF_8)
                 reply(out, 200, "text/html; charset=utf-8", page)
             }
@@ -357,25 +486,27 @@ object WebAdminServer {
 
             path == "/api/setup" && method == "POST" -> {
                 if (initialized(context)) return reply(out, 400, "application/json; charset=utf-8", error("already initialized"))
+                val authorized = synchronized(setupAuthorized) { (setupAuthorized[clientIp] ?: 0L) > System.currentTimeMillis() }
+                if (!authorized) return reply(out, 403, "application/json; charset=utf-8", error("scan the setup QR shown on the TV first"))
                 val password = JSONObject(body.ifEmpty { "{}" }).optString("password")
-                if (password.length < MIN_PASSWORD) return reply(out, 400, "application/json; charset=utf-8", error("password too short"))
-                val salt = randomHex(16)
-                val hash = sha256(salt + password)
-                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                    .putString(KEY_SALT, salt)
-                    .putString(KEY_HASH, hash)
-                    .commit()
+                if (password.length < MIN_PASSWORD) return reply(out, 400, "application/json; charset=utf-8", error("password must be at least 12 characters"))
+                storePassword(context, password)
+                synchronized(setupAuthorized) { setupAuthorized.remove(clientIp) }
                 val token = newSession()
                 reply(out, 200, "application/json; charset=utf-8", ok(), cookie = sessionCookie(token))
             }
 
             path == "/api/login" && method == "POST" -> {
                 if (!initialized(context)) return reply(out, 400, "application/json; charset=utf-8", error("not initialized"))
+                val blocked = loginBlockedMs(clientIp)
+                if (blocked > 0L) return reply(out, 429, "application/json; charset=utf-8", error("too many attempts; retry in ${blocked / 1000 + 1}s"))
                 val password = JSONObject(body.ifEmpty { "{}" }).optString("password")
-                val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                val salt = prefs.getString(KEY_SALT, null) ?: return reply(out, 500, "application/json; charset=utf-8", error("server error"))
-                val stored = prefs.getString(KEY_HASH, null) ?: return reply(out, 500, "application/json; charset=utf-8", error("server error"))
-                if (sha256(salt + password) != stored) return reply(out, 401, "application/json; charset=utf-8", error("wrong password"))
+                if (!verifyPassword(context, password)) {
+                    val remaining = recordLoginFailure(clientIp)
+                    return reply(out, if (remaining > 0L) 429 else 401, "application/json; charset=utf-8",
+                        error(if (remaining > 0L) "too many attempts; retry in ${remaining / 1000 + 1}s" else "wrong password"))
+                }
+                clearLoginFailures(clientIp)
                 val token = newSession()
                 reply(out, 200, "application/json; charset=utf-8", ok(), cookie = sessionCookie(token))
             }
@@ -393,11 +524,7 @@ object WebAdminServer {
                 val fresh = json.optString("new")
                 if (!verifyPassword(context, old)) return reply(out, 403, "application/json; charset=utf-8", error("wrong password"))
                 if (fresh.length < MIN_PASSWORD) return reply(out, 400, "application/json; charset=utf-8", error("password too short"))
-                val salt = randomHex(16)
-                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                    .putString(KEY_SALT, salt)
-                    .putString(KEY_HASH, sha256(salt + fresh))
-                    .commit()
+                storePassword(context, fresh)
                 reply(out, 200, "application/json; charset=utf-8", ok())
             }
 
@@ -737,7 +864,7 @@ object WebAdminServer {
     }
 
     private fun sessionCookie(token: String) =
-        "$COOKIE=$token; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_MS / 1000}"
+        "$COOKIE=$token; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_MS / 1000}"
 
     private fun clearCookie() = "$COOKIE=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"
 
@@ -796,11 +923,17 @@ object WebAdminServer {
 
     private fun reply(out: OutputStream, status: Int, type: String, body: String, cookie: String? = null) {
         val bytes = body.toByteArray(Charsets.UTF_8)
+        val reason = when (status) { 200 -> "OK"; 400 -> "Bad Request"; 401 -> "Unauthorized"; 403 -> "Forbidden"; 404 -> "Not Found"; 429 -> "Too Many Requests"; else -> "Error" }
         val head = StringBuilder()
-            .append("HTTP/1.1 $status ${if (status == 200) "OK" else "Error"}\r\n")
+            .append("HTTP/1.1 $status $reason\r\n")
             .append("Content-Type: $type\r\n")
             .append("Content-Length: ${bytes.size}\r\n")
             .append("Connection: close\r\n")
+            .append("Cache-Control: no-store, max-age=0\r\n")
+            .append("Pragma: no-cache\r\n")
+            .append("X-Content-Type-Options: nosniff\r\n")
+            .append("Referrer-Policy: no-referrer\r\n")
+            .append("Permissions-Policy: camera=(), microphone=(), geolocation=()\r\n")
         cookie?.let { head.append("Set-Cookie: $it\r\n") }
         head.append("\r\n")
         out.write(head.toString().toByteArray(Charsets.UTF_8))
