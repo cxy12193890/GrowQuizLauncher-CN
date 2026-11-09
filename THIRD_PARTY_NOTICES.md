@@ -42,6 +42,6 @@ NASA 内容通常可按其媒体指南使用，但第三方版权素材、可识
 The Fraunces binary was removed from the commercial branch because the exact binary-to-license provenance had not been verified. The app uses the Android system serif typeface instead.
 
 
-## Bouncy Castle Java 1.80
+## Bouncy Castle Java 1.86
 
 The `bcprov-jdk18on` and `bcpkix-jdk18on` libraries generate per-install TLS certificates for the local parent console and upload endpoint. They are distributed under the Bouncy Castle Licence, which is to be read like the MIT licence. The licence text is in `LICENSES/Bouncy-Castle.txt`.
