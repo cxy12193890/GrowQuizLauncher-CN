@@ -1892,12 +1892,10 @@ class MainActivity : Activity() {
                 Tile(getString(R.string.choose_from_tv), inUse(current.startsWith("folder:")), R.drawable.ms_folder, R.string.help_folder) { pickFolder(forDark) },
                 Tile(getString(R.string.my_uploads), inUse(uploads.any { it.first == current }), R.drawable.ms_photo_library, R.string.help_my_uploads) { pickUploads(forDark) },
             ),
-            R.string.aerial_views to listOfNotNull(
-                Tile(getString(R.string.surprise_me), icon = R.drawable.ms_shuffle, help = R.string.help_surprise) { surpriseVideo(forDark) },
-                scenes.firstOrNull { "video:${it.file}" == current }?.let { Tile(it.name, current) { previewWallpaper(current) } },
-            ) + kinds + Tile(getString(R.string.manage_videos), icon = R.drawable.ms_edit, help = R.string.help_manage_videos) { pickVideoWallpaper(forDark) },
-            R.string.wp_group_more to listOf(pick(Bing.CHOICE), pick(ShowsWall.CHOICE),
-                Tile(getString(R.string.built_in), inUse(current in builtIns(forDark)) ?: builtIns(forDark).first(), R.drawable.ms_landscape, R.string.help_built_in) { pickBuiltIn(forDark) }),
+            R.string.wp_group_more to listOf(
+                pick(ShowsWall.CHOICE),
+                Tile(getString(R.string.built_in), inUse(current in builtIns(forDark)) ?: builtIns(forDark).first(), R.drawable.ms_landscape, R.string.help_built_in) { pickBuiltIn(forDark) },
+            ),
         )
         // The current wallpaper's own settings first: how often a folder or the shows change, and which shows.
         val extras = listOfNotNull(
@@ -1939,124 +1937,19 @@ class MainActivity : Activity() {
         (focus ?: grid.getFocusables(View.FOCUS_DOWN).firstOrNull())?.requestFocus()
     }
 
-    private var packCatalog = emptyList<PackPhoto>()
-    private var packBusy = false
-    /** When Built-in last asked GitHub for new photos; once a day is enough, and each check hashes every photo. */
-    private var packCheckedAt = 0L
-    private var refreshPackPage: (() -> Unit)? = null
-
     private fun packDir() = File(filesDir, "wallpaper-pack")
 
-    /** Include local files even when GitHub is unavailable or no longer lists them. */
-    private fun packFiles() = (packCatalog.map { it.file } +
-        packDir().listFiles { f -> f.isFile && packFileName(f.name) }.orEmpty().map { it.name }).distinct().sorted()
+    private fun builtIns(forDark: Boolean) = listOf(plainWallpaper(forDark))
 
-    private fun builtIns(forDark: Boolean) = BUNDLED_WALLPAPERS.keys.map { "res:$it" } +
-        packFiles().filter { packPhotoName(it) !in BUNDLED_WALLPAPERS && File(packDir(), it).isFile }.map { "pack:$it" } + plainWallpaper(forDark)
-
-    private fun packSize(photos: List<PackPhoto>) = String.format(java.util.Locale.ROOT, "%.1f MB", photos.sumOf { it.size } / 1_000_000.0)
-
-    /** Refresh only on entry. Existing downloads update by content; new photos wait for OK. */
+    /** Third-party wallpaper packs stay disabled until commercial redistribution rights are documented. */
     private fun pickBuiltIn(forDark: Boolean, focusOn: String? = null, refresh: Boolean = true) {
-        var active = true
-        val current = currentWallpaper(forDark)
-        val missing = packCatalog.filter { !File(packDir(), it.file).isFile }
-        val choices = BUNDLED_WALLPAPERS.keys.map { "res:$it" } +
-            packFiles().filter { packPhotoName(it) !in BUNDLED_WALLPAPERS }.map { "pack:$it" } + plainWallpaper(forDark)
-        val get = if (missing.isEmpty()) emptyList() else listOf(
-            Tile(getString(R.string.get_wallpaper_pack, packSize(missing)), icon = R.drawable.ms_photo_library, help = R.string.help_wallpaper_pack) {
-                downloadPack(missing) { if (it) refreshPackPage?.invoke() }
-            })
-        wallGrid(getString(R.string.built_in), listOf(null to choices.map { c ->
-            Tile(wallpaperName(c), c, help = R.string.help_wallpaper_pack.takeIf { c.startsWith("pack:") }) {
-                val photo = packCatalog.firstOrNull { "pack:${it.file}" == c }
-                if (photo != null && !File(packDir(), photo.file).isFile) {
-                    downloadPack(listOf(photo)) { ok ->
-                        if (ok && active) {
-                            setWallpaper(forDark, c)
-                            previewWallpaper(c) { pickBuiltIn(forDark, c) }
-                        }
-                    }
-                } else {
-                    active = false // A pending download must not replace this newer selection.
-                    setWallpaper(forDark, c); previewWallpaper(c) { pickBuiltIn(forDark, c) }
-                }
-            }
-        } + get), forDark, current, focusOn) { pickWallpaper(forDark, current) }
-        refreshPackPage = { if (wallPreview == null) pickBuiltIn(forDark, focusOn, false) }
-        pageExit = { active = false; refreshPackPage = null }
-        if (refresh && !packBusy && (packCheckedAt == 0L || SystemClock.elapsedRealtime() - packCheckedAt > 24 * 3600_000L)) {
-            packBusy = true
-            io.execute {
-                val changed = mutableSetOf<String>()
-                var updateFailed = false
-                val catalog = try {
-                    // shortcut: GitHub's directory API supports 1,000 entries; use the tree API for a larger pack.
-                    val entries = org.json.JSONArray(openStream("https://api.github.com/repos/$REPO/contents/wallpapers?ref=main").use { it.readBytes().decodeToString() })
-                    require(entries.length() < 1000)
-                    val photos = (0 until entries.length()).mapNotNull { i ->
-                        val entry = entries.getJSONObject(i)
-                        if (entry.optString("type") != "file" || !packFileName(entry.getString("name"))) null
-                        else PackPhoto(entry.getString("name"), entry.getLong("size"), entry.getString("sha"))
-                    }
-                    require(photos.map { it.file }.distinct().size == photos.size)
-                    val updates = photos.filter { File(packDir(), it.file).isFile && !it.current(packDir()) }
-                    if (updates.isNotEmpty()) ui.post { if (!isDestroyed) toast(getString(R.string.downloading_wallpapers, packSize(updates))) }
-                    for (photo in updates) {
-                        try {
-                            if (photo.download(packDir()) { openStream(PACK_URL + photo.file + "?v=" + photo.sha) }) changed += "pack:${photo.file}"
-                        } catch (e: Exception) {
-                            updateFailed = true
-                            android.util.Log.w("TVQuizLock", "wallpaper update: ${photo.file}", e)
-                        }
-                    }
-                    photos
-                } catch (e: Exception) {
-                    android.util.Log.w("Plume", "wallpaper catalogue", e)
-                    null
-                }
-                ui.post {
-                    packBusy = false
-                    if (isDestroyed) return@post
-                    if (catalog != null && !updateFailed) packCheckedAt = SystemClock.elapsedRealtime()
-                    val newCatalog = catalog != null && catalog != packCatalog
-                    if (catalog != null) packCatalog = catalog
-                    for (c in changed) { thumbCache.remove("$c|false"); thumbCache.remove("$c|true") }
-                    if (currentWallpaper() in changed) loadWallpaper()
-                    if (updateFailed || (catalog == null && packFiles().isEmpty())) toast(getString(R.string.wallpapers_failed), long = true)
-                    // Rebuild the grid only when it would look different; a rebuild blanks every picture for a moment.
-                    if (newCatalog || changed.isNotEmpty()) refreshPackPage?.invoke()
-                }
-            }
-        }
-    }
-
-    private fun downloadPack(photos: List<PackPhoto>, done: (Boolean) -> Unit) {
-        if (packBusy) return toast(getString(R.string.downloading))
-        packBusy = true
-        toast(getString(R.string.downloading_wallpapers, packSize(photos)))
-        io.execute {
-            val changed = mutableSetOf<String>()
-            val ok = try {
-                for (photo in photos) {
-                    if (photo.download(packDir()) { openStream(PACK_URL + photo.file + "?v=" + photo.sha) }) changed += "pack:${photo.file}"
-                }
-                true
-            } catch (e: Exception) {
-                android.util.Log.w("Plume", "wallpaper download", e)
-                false
-            }
-            ui.post {
-                packBusy = false
-                if (isDestroyed) return@post
-                if (currentWallpaper() in changed) loadWallpaper()
-                if (!ok) {
-                    toast(getString(R.string.wallpapers_failed), long = true)
-                    refreshPackPage?.invoke()
-                }
-                done(ok)
-            }
-        }
+        val choice = plainWallpaper(forDark)
+        wallGrid(getString(R.string.built_in), listOf(null to listOf(
+            Tile(wallpaperName(choice), choice, icon = R.drawable.ms_landscape) {
+                setWallpaper(forDark, choice)
+                previewWallpaper(choice) { pickBuiltIn(forDark) }
+            },
+        )), forDark, currentWallpaper(forDark), focusOn) { pickWallpaper(forDark, choice) }
     }
 
     /** Your uploaded photos and videos, as choices; videos are the MP4s that are not catalogue scenes. */
