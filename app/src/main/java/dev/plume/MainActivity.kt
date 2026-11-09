@@ -587,8 +587,6 @@ class MainActivity : Activity() {
         updateFeatured()
         // Auto update check, at most once a day (throttled inside); a find says so on the home screen once.
         ui.post { checkUpdate(false) }
-        // Gallery chosen but its paintings missing (updated from a version that bundled them): fetch them.
-        if (galleryOn() && photoScreensaver() == null && !aerialScreensaverOn() && !paintingsReady(this)) downloadPaintings {}
         Bing.onChanged = bingChanged
         Bing.refresh(applicationContext, prefs)
         ui.post { updateBadge() } // after layout, so the icon has its size
@@ -4956,30 +4954,21 @@ class MainActivity : Activity() {
     private fun aerialScreensaverOn() = galleryOn() && prefs.getString("ss_folder", null) == AERIAL_SCREENSAVER
 
     private fun pickScreensaver(focus: Int = 0) {
-        val paintings = galleryOn() && photoScreensaver() == null && !aerialScreensaverOn()
         val photos = galleryOn() && photoScreensaver() != null
         val other = if (galleryOn()) prefs.getString("prev_screensaver", "").orEmpty() else currentScreensaver()
         showPage(getString(R.string.screensaver), listOf(
-            page(getString(R.string.gallery_paintings), if (paintings) CHOSEN else if (downloading) getString(R.string.downloading) else PAINTINGS_MB) {
-                useGallery(null)
-                pickScreensaver(0)
-            },
-            page(getString(R.string.aerial_views), if (aerialScreensaverOn()) CHOSEN else aerialFiles(this).size.let { resources.getQuantityString(R.plurals.n_scenes, it, it) }) {
-                pickAerialScenes()
-            },
             page(getString(R.string.your_photos), if (photos) "${wallpaperName(photoScreensaver()!!)} $CHOSEN" else "") {
-                pickFolder({ pickScreensaver(2) }) { choice ->
+                pickFolder({ pickScreensaver(0) }) { choice ->
                     useGallery(choice)
-                    pickScreensaver(2)
+                    pickScreensaver(0)
                 }
             },
             page(screensaverName(other), if (galleryOn()) "" else CHOSEN) {
                 if (galleryOn()) stopGallery()
-                pickScreensaver(3)
+                pickScreensaver(1)
             },
-        ), focus) { renderSettings(R.string.screensaver) }
+        ), focus.coerceIn(0, 1)) { renderSettings(R.string.screensaver) }
     }
-
     @Volatile private var aerialDownload: String? = null // the scene file being fetched, one at a time
 
     /**
@@ -5051,11 +5040,10 @@ class MainActivity : Activity() {
         }
     }
 
-    /** Gallery on, with paintings ([folder] null, downloaded first if needed) or a folder of photos. */
+    /** The in-app screensaver is limited to a folder explicitly selected by the family. */
     private fun useGallery(folder: String?) {
+        if (folder == null) return toast("未经核实授权的画作屏保已停用，请选择个人照片。", long = true)
         prefs.edit().putString("ss_folder", folder).apply()
-        if (folder == null && !paintingsReady(this)) return downloadPaintings { useGallery(null) }
-        if (folder != null) paintingsDir(this).deleteRecursively() // not needed for photos: give the space back
         if (galleryOn()) return
         if (checkSelfPermission(WRITE_SECURE) != PackageManager.PERMISSION_GRANTED) {
             // Without the adb permission Plume can't switch it itself; Android's own list has getString(R.string.gallery).
@@ -5071,7 +5059,6 @@ class MainActivity : Activity() {
     private fun stopGallery() {
         if (checkSelfPermission(WRITE_SECURE) != PackageManager.PERMISSION_GRANTED) return openScreensaverSettings()
         Settings.Secure.putString(contentResolver, "screensaver_components", prefs.getString("prev_screensaver", "") ?: "")
-        paintingsDir(this).deleteRecursively() // another screensaver is in charge: give the space back
     }
 
     /** Android's screensaver settings (timing, sleep): plain Android TV and Google TV name them differently. */
@@ -5087,16 +5074,6 @@ class MainActivity : Activity() {
     }
 
     @Volatile private var downloading = false
-
-    /**
-     * Fetches the Gallery paintings into a temporary folder and only swaps it in once every file arrived,
-     * so a dropped connection never leaves a half-filled Gallery behind.
-     */
-    private fun downloadPaintings(then: () -> Unit) =
-        download(PAINTINGS_URL, PAINTING_FILES, paintingsDir(this), getString(R.string.downloading_paintings, PAINTINGS_MB), R.string.paintings_failed) { ok ->
-            if (ok) then()
-            if (settingsScrim.visibility == View.VISIBLE) renderSettings(R.string.screensaver)
-        }
 
     /** Fetches [files] from [url] into [dir], all or nothing; [done] runs on the UI thread with whether they all arrived. */
     private fun download(url: String, files: List<String>, dir: File, start: String, failed: Int, done: (Boolean) -> Unit) {
