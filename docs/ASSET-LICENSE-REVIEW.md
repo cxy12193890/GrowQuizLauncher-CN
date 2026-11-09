@@ -17,7 +17,7 @@ RELEASE_APPROVED: NO
 
 | 素材 | 核查结果 | 处理 |
 |---|---|---|
-| Fraunces 字体 `clock_serif.ttf` | 源码注释标注 Fraunces；字体上游仓库公开采用 SIL Open Font License 1.1 | 已将上游 OFL 文本放入 `LICENSES/OFL-1.1.txt`；仍需核对当前二进制确实来自该授权版本，并保留版权声明 |
+| Fraunces 字体 | 已从商业分支移除未核实的二进制，应用改用 Android 系统衬线字体 | 不再分发该字体二进制 |
 | Material Symbols | 上游项目说明标注 Google Material Symbols，Apache-2.0；Google 官方指南确认该许可 | 已将 Apache-2.0 文本放入 `LICENSES/Apache-2.0.txt`，并在第三方声明中注明来源 |
 | Simple Icons | 上游项目说明标注 CC0 | 保留来源说明；如具体图标文件并非来自所声明版本，需重新核对 |
 
@@ -46,7 +46,7 @@ RELEASE_APPROVED: NO
 
 - [ ] 33,000 条题库取得完整来源及商业使用授权，或全部替换为可证明原创/可商用数据
 - [ ] 10 张 4K 壁纸与内置壁纸取得商业使用及再分发授权，或全部替换
-- [ ] Fraunces 字体二进制与 OFL 授权版本核对一致
+- [x] 移除无法核对来源的 Fraunces 字体二进制，改用 Android 系统字体
 - [ ] 第三方图标、字体、代码许可文本和声明齐全
 - [ ] NASA/Apple/Amazon 在线内容逐项完成使用条款审查，删除未获许可的内容入口
 - [ ] 最终发布包、源码、第三方声明与 GPL-3.0 要求一致
