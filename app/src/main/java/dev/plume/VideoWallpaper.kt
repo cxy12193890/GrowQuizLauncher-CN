@@ -110,12 +110,8 @@ internal fun parseVideoScenes(input: InputStream): List<VideoScene> {
 }
 
 internal fun videoScenes(context: Context): List<VideoScene> {
-    cachedScenes?.let { return it }
-    val list = try {
-        context.resources.openRawResource(R.raw.video_scenes).use { parseVideoScenes(it) }
-    } catch (_: Exception) { emptyList() }
-    cachedScenes = list
-    return list
+    // Third-party NASA, Apple and Amazon scene catalogues are disabled until the content terms are verified.
+    return emptyList()
 }
 
 /** Download on selection only. A partial or oversized file never replaces a saved video. */
