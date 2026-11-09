@@ -14,6 +14,10 @@ Write every entry in ASD-STE100 Simplified Technical English:
 
 Put changes that are not released under `## Unreleased`. Rename that heading to the version number when you release.
 
+## 1.14.4
+
+- **答题没弹出来有记录。** 闹钟响过而答题页两分钟内没出现，记为「弹出被拦（静默）」。事件附品牌、悬浮窗权限与系统版本。此前只有系统抛异常才记录，静默拦截看不见。首批上报里一台手机响了 20 次闹钟只弹出 1 次，就是这种情况。
+
 ## 1.14.3
 
 - **开机弹窗列出未完成初始化。** 连接 Wi-Fi 的开机提示中列出本机缺少的权限与服务。管理页面「运行状态」里有对应修复命令，可复制或交给手机 AI 助手代执行。

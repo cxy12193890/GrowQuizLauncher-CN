@@ -376,7 +376,7 @@ adb shell cmd package query-services -a android.intent.action.TTS_SERVICE   # �
 | 答题记录与自定义题 | `quiz/QuestionBank.kt` | 记录每题答对次数（满 5 次自动禁用），合并家长自定义题与题目启停状态 |
 | 局域网管理台 | `web/WebAdminServer.kt` | 纯 JDK `ServerSocket` 单页服务：设置、题库维护、批量导入（`/import` 独立页）、改密码、TTS 测试；SHA-256 加盐口令、24 小时会话 Cookie，无第三方依赖 |
 | 自动更新 | `ApkProvider.kt` + 更新服务器 | 每天检查一次自有更新服务器；服务器每 3 小时从 GitHub Releases 同步最新发版 |
-| 兼容诊断 | `DiagLog.kt` + `DeviceProbe.kt` + `ReportUpload.kt` + `Vendor.kt` | 崩溃/开机/答题弹出/前台保持/无障碍绑定/语音/更新等关键事件记为 JSONL；每天随设备探针快照匿名上报一次，用于按品牌适配；`Vendor` 在运行时识别品牌，品牌专属修复只在对应设备上运行 |
+| 兼容诊断 | `DiagLog.kt` + `DeviceProbe.kt` + `ReportUpload.kt` + `Vendor.kt` + `quiz/PopupAudit.kt` | 崩溃/开机/答题弹出/前台保持/无障碍绑定/语音/更新等关键事件记为 JSONL；每天随设备探针快照匿名上报一次，用于按品牌适配；`Vendor` 在运行时识别品牌，品牌专属修复只在对应设备上运行；`PopupAudit` 用「上次闹钟时间 vs 上次答题页打开时间」的比对发现被系统静默吞掉的答题弹窗（纯 JVM，有单测） |
 | 语音 | `quiz/QuizVoice.kt` + `quiz/SpeechText.kt` + `quiz/TtsProbe.kt` + `quiz/TtsDiagnosis.kt` | `QuizVoice` 是全局唯一的 TTS 引擎，桌面启动即预热；`SpeechText` 把题目改写成可朗读的中文（纯 JVM，有单测）；`TtsProbe` 供管理台检测引擎可用性，并列出本机已装引擎；`TtsDiagnosis` 把「没装引擎」与「引擎启动失败」分成两种上报事件（纯 JVM，有单测） |
 | 桌面本体 | `dev.plume.*` | 上游 Plume 的桌面、壁纸、屏保、按键重映射等 |
 

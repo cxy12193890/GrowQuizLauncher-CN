@@ -116,6 +116,21 @@ class QuizPrefs(context: Context) {
         get() = prefs.getInt(KEY_PROMPT_BOOT, -1)
         set(value) = prefs.edit().putInt(KEY_PROMPT_BOOT, value).apply()
 
+    /** Last time the quiz alarm went off — even when the pop-up never appeared. Pairs with [lastQuizOpenAt]. */
+    var lastAlarmAt: Long
+        get() = prefs.getLong(KEY_LAST_ALARM_AT, 0L)
+        set(value) = prefs.edit().putLong(KEY_LAST_ALARM_AT, value).apply()
+
+    /** Last time the quiz page actually opened. Behind [lastAlarmAt] means the system ate the pop-up. */
+    var lastQuizOpenAt: Long
+        get() = prefs.getLong(KEY_LAST_QUIZ_OPEN_AT, 0L)
+        set(value) = prefs.edit().putLong(KEY_LAST_QUIZ_OPEN_AT, value).apply()
+
+    /** The alarm timestamp already reported as swallowed, so a missed pop-up is logged exactly once. */
+    var popupLoggedFor: Long
+        get() = prefs.getLong(KEY_POPUP_LOGGED_FOR, 0L)
+        set(value) = prefs.edit().putLong(KEY_POPUP_LOGGED_FOR, value).apply()
+
     /** Parents released the rest early from the web console: wipe every anti-guess counter. */
     fun clearRest() {
         prefs.edit()
@@ -158,5 +173,8 @@ class QuizPrefs(context: Context) {
         private const val KEY_OVERLAY_ASKED = "overlay_asked"
         private const val KEY_EXACT_ASKED = "exact_alarm_asked"
         private const val KEY_PROMPT_BOOT = "prompt_boot_count"
+        private const val KEY_LAST_ALARM_AT = "last_alarm_at"
+        private const val KEY_LAST_QUIZ_OPEN_AT = "last_quiz_open_at"
+        private const val KEY_POPUP_LOGGED_FOR = "popup_logged_for"
     }
 }

@@ -3,7 +3,10 @@ package dev.plume.quiz
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import dev.plume.DiagLog
+import dev.plume.Vendor
 
 class QuizAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -17,6 +20,11 @@ class QuizAlarmReceiver : BroadcastReceiver() {
         // GrowQuiz: the alarm wakes this process anyway, so a TV nobody opens still reports on
         // schedule — day-one data showed most devices only ever started once.
         dev.plume.ReportUpload.maybeUpload(context)
+        // GrowQuiz: judge the previous alarm before this one overwrites its timestamp — a fired
+        // alarm that never produced a quiz_open was swallowed silently (background-start rules
+        // throw nothing), and only this look-back can see it.
+        auditSwallowed(context)
+        prefs.lastAlarmAt = System.currentTimeMillis()
         // GrowQuiz: the report pairs this event with QuizActivity's quiz_open; an alarm_fired with
         // no quiz_open soon after means the firmware swallowed the start (background-start rules).
         val kv = mutableMapOf<String, String>()
@@ -32,6 +40,32 @@ class QuizAlarmReceiver : BroadcastReceiver() {
             )
         } catch (e: Exception) {
             DiagLog.event("quiz_popup_blocked", e.message ?: e.javaClass.simpleName)
+        }
+    }
+
+    companion object {
+        /**
+         * Writes quiz_popup_blocked("silent") when the last alarm on record never produced a
+         * quiz_open. Called from here and from App.onCreate, so a TV whose alarms stop entirely
+         * still reports the miss the next time any part of the app runs.
+         */
+        fun auditSwallowed(context: Context) {
+            val prefs = QuizPrefs(context)
+            val now = System.currentTimeMillis()
+            val missed = PopupAudit.swallowed(
+                prefs.lastAlarmAt, prefs.lastQuizOpenAt, prefs.popupLoggedFor, now,
+            ) ?: return
+            prefs.popupLoggedFor = missed
+            DiagLog.event(
+                "quiz_popup_blocked",
+                "silent",
+                mapOf(
+                    "vendor" to Vendor.current,
+                    "overlay" to Settings.canDrawOverlays(context).toString(),
+                    "sdk" to Build.VERSION.SDK_INT.toString(),
+                    "ageMin" to ((now - missed) / 60_000L).toString(),
+                ),
+            )
         }
     }
 }

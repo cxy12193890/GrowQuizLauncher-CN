@@ -9,5 +9,8 @@ class App : Application() {
         DiagLog.init(this)
         CrashLog.install(this)
         DiagLog.event("app_start", "", mapOf("vendor" to Vendor.current))
+        // A process start is a chance to report an alarm whose quiz pop-up never appeared; the
+        // audit no-ops when there is nothing overdue (e.g. the alarm that woke this very process).
+        dev.plume.quiz.QuizAlarmReceiver.auditSwallowed(this)
     }
 }

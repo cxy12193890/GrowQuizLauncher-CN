@@ -168,6 +168,8 @@ class QuizActivity : Activity() {
         // GrowQuiz: pairs with the alarm's alarm_fired; a fired alarm without this event soon after
         // means the firmware dropped the pop-up (see QuizAlarmReceiver).
         dev.plume.DiagLog.event("quiz_open")
+        // Proof the pop-up made it onto the screen; the alarm audit compares against this stamp.
+        snapPrefs?.lastQuizOpenAt = System.currentTimeMillis()
         ledger = QuizLedger(applicationContext)
         refreshLevel()
         if (QuizDeviceOwner.configure(this)) {
