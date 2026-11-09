@@ -113,7 +113,10 @@ internal class UploadServer(context: Context, ip: String, val code: String, priv
 
     private fun reply(out: OutputStream, status: Int, type: String, body: String) {
         val bytes = body.toByteArray()
-        out.write("HTTP/1.1 $status ${if (status == 200) "OK" else "Error"}\r\nContent-Type: $type\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n\r\n".toByteArray())
+        out.write(("HTTP/1.1 $status ${if (status == 200) "OK" else "Error"}\r\n" +
+            "Content-Type: $type\r\nContent-Length: ${bytes.size}\r\nConnection: close\r\n" +
+            "Cache-Control: no-store, max-age=0\r\nX-Content-Type-Options: nosniff\r\n" +
+            "Referrer-Policy: no-referrer\r\n\r\n").toByteArray())
         out.write(bytes)
         out.flush()
     }
