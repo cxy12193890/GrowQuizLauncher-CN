@@ -424,11 +424,11 @@ class MainActivity : Activity() {
                 .putString("theme", "light").putString("glass_style", GlassStyle.FROSTED.key).apply()
         for (key in listOf("wp_light", "wp_dark")) {
             val saved = prefs.getString(key, null)
-            if (saved == Bing.CHOICE || saved == "res:Arctic Aurora" || saved?.startsWith("pack:") == true) {
+            if (saved == "bing" || saved == "res:Arctic Aurora" || saved?.startsWith("pack:") == true) {
                 prefs.edit().putString(key, plainWallpaper(key == "wp_dark")).apply()
             }
         }
-        Bing.file(this).delete()
+        File(filesDir, "bing.jpg").delete()
         packDir().deleteRecursively()
         if (!prefs.getBoolean("wp_shared", false)) {
             val wasDark = wantDark()
@@ -646,7 +646,6 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         videoWallpaper.clear()
-        if (Bing.onChanged === bingChanged) Bing.onChanged = null
         unregisterReceiver(packageReceiver)
         applicationContext.getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(net)
         getSystemService(TvInputManager::class.java)?.unregisterCallback(inputCallback)
@@ -1508,7 +1507,7 @@ class MainActivity : Activity() {
 
     /** Legacy selections pointing to unverified third-party sources are migrated to plain backgrounds. */
     private fun movedWallpaper(choice: String): String {
-        if (choice == Bing.CHOICE || choice == "res:Arctic Aurora" || choice.startsWith("pack:")) {
+        if (choice == "bing" || choice == "res:Arctic Aurora" || choice.startsWith("pack:")) {
             val darkPack = choice.removePrefix("pack:") in setOf("hemisferic.webp", "light-trails.webp", "t-centralen.webp",
                 "obsidian-dunes.webp", "petrol-current.webp", "copper-eclipse.webp", "indigo-ridge.webp", "aubergine-fold.webp")
             return plainWallpaper(darkPack)
@@ -1870,12 +1869,7 @@ class MainActivity : Activity() {
         val uploads = ownUploads(forDark, scenes)
         val pick = { c: String -> Tile(wallpaperName(c), c) { setWallpaper(forDark, c); previewWallpaper(c) } }
         val inUse = { mine: Boolean -> current.takeIf { mine } }
-        // Scenes by what they show, whoever filmed them: people look for "the sea", not for a provider.
-        val kinds = scenes.groupBy { it.category }.entries.sortedByDescending { it.value.size }.map { (kind, list) ->
-            Tile(kind, icon = SCENE_ICONS[kind] ?: R.drawable.ms_movie, help = R.string.help_scene_kind) {
-                pickVideoScenesList(forDark, kind, list.sortedBy { it.name }) { pickWallpaper(forDark) }
-            }
-        }
+
         val groups = listOf(
             R.string.wp_group_yours to listOf(
                 Tile(getString(R.string.add_from_phone), icon = R.drawable.ms_add_photo_alternate, help = R.string.help_add_from_phone) { uploadWallpaper(forDark) },
@@ -2222,7 +2216,6 @@ class MainActivity : Activity() {
         loadWallpaper()
     }
 
-    private val bingChanged: () -> Unit = { if (currentWallpaper() == Bing.CHOICE) loadWallpaper() }
 
     // ---------- shows wallpaper (see ShowsWall) ----------
 
