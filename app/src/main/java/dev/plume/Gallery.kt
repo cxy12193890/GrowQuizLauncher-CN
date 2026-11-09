@@ -4,7 +4,6 @@ import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -13,38 +12,11 @@ import android.service.dreams.DreamService
 import android.view.KeyEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import java.io.File
 import java.io.IOException
 import java.util.concurrent.Executors
 
-/**
- * Public-domain museum scans, not bundled: downloaded on demand from the repo's `gallery-1` release (the
- * files live in screensaver/) into [paintingsDir], so the APK stays under 1 MB for people who never use it. only paintings whose canvas is (within ~2-4%) 16:9, cropped
- * to exactly 1920×1080 so they fill the screen with nothing cut off and no bars. Bright ones for light mode,
- * dusk and storm ones for dark (wide night paintings are rare).
- */
-private class Painting(val file: String, val title: String, val artist: String)
-
 /** One picture in the show: a painting with its caption, or one of your photos (no caption). */
 private class Picture(val title: String, val artist: String, val load: () -> Bitmap?)
-
-private val LIGHT = listOf(
-    Painting("andes", "The Heart of the Andes", "Frederic Edwin Church, 1859"),
-    Painting("icebergs", "The Icebergs", "Frederic Edwin Church, 1861"),
-    Painting("rye", "Rye", "Ivan Shishkin, 1878"),
-    Painting("chimborazo", "Chimborazo", "Frederic Edwin Church, 1864"),
-    Painting("hudson", "Autumn on the Hudson River", "Jasper Francis Cropsey, 1860"),
-)
-private val DARK = listOf(
-    Painting("cotopaxi", "Cotopaxi", "Frederic Edwin Church, 1862"),
-    Painting("thunderstorm", "Thunder Storm on Narragansett Bay", "Martin Johnson Heade, 1868"),
-)
-
-internal const val PAINTINGS_URL = "https://github.com/aradhyas8/Plume_Launcher/releases/download/gallery-1/"
-internal const val PAINTINGS_MB = "4.7 MB"
-internal val PAINTING_FILES = (LIGHT + DARK).map { "${it.file}.jpg" }
-internal fun paintingsDir(c: Context) = File(c.filesDir, "paintings")
-internal fun paintingsReady(c: Context) = PAINTING_FILES.all { File(paintingsDir(c), it).exists() }
 
 /**
  * The Gallery screensaver. Picked in launcher settings, which also restore the previous one when it's off.
@@ -97,23 +69,20 @@ private class GalleryShow(private val context: Context) : SurfaceHolder.Callback
     private val io = Executors.newSingleThreadExecutor()
     val view = SurfaceView(context).also { it.holder.addCallback(this) }
 
-    /** A folder's photos in shuffled order if one is chosen and still has photos, else the theme's paintings. */
+    /** Only family-selected photos are displayed; no third-party artwork is downloaded or bundled. */
     private fun pictures(): List<Picture> {
-        val prefs = context.getSharedPreferences("home", Context.MODE_PRIVATE)
         val photos = try {
-            prefs.getString("ss_folder", null)?.takeIf { it != AERIAL_SCREENSAVER }?.let { folderPhotos(context.contentResolver, it) }.orEmpty()
-        } catch (e: Exception) { // photo access taken away
+            val prefs = context.getSharedPreferences("home", Context.MODE_PRIVATE)
+            prefs.getString("ss_folder", null)?.takeIf { it != AERIAL_SCREENSAVER }
+                ?.let { folderPhotos(context.contentResolver, it) }.orEmpty()
+        } catch (_: Exception) {
             emptyList()
         }
-        if (photos.isNotEmpty()) return photos.shuffled().map { id ->
+        return photos.shuffled().map { id ->
             val uri = ContentUris.withAppendedId(PHOTOS, id)
             Picture("", "") { fitWallpaper { context.contentResolver.openInputStream(uri) ?: throw IOException("gone: $uri") } }
         }
-        return (if (prefersDark(prefs)) DARK else LIGHT).map { p ->
-            Picture(p.title, p.artist) { File(paintingsDir(context), "${p.file}.jpg").inputStream().use { BitmapFactory.decodeStream(it) } }
-        }
     }
-
     private class Slide(val bmp: Bitmap, val painting: Picture, val start: Long, val fadeMs: Long)
 
     // Shared between the loader and the render thread; swaps and draws hold [lock], so a bitmap is
@@ -122,7 +91,7 @@ private class GalleryShow(private val context: Context) : SurfaceHolder.Callback
     @Volatile private var current: Slide? = null
     @Volatile private var previous: Slide? = null
     @Volatile private var running = false
-    private var index = paintings.indices.random()
+    private var index = 0
     @Volatile private var advanceAt = 0L
     private var render: Thread? = null
 
@@ -144,6 +113,7 @@ private class GalleryShow(private val context: Context) : SurfaceHolder.Callback
     }
 
     fun step(by: Int) {
+        if (paintings.isEmpty()) return
         index = (index + by + paintings.size) % paintings.size
         load(index)
     }
@@ -160,6 +130,7 @@ private class GalleryShow(private val context: Context) : SurfaceHolder.Callback
     }
 
     private fun load(i: Int) {
+        if (i !in paintings.indices) return
         val p = paintings[i]
         io.execute {
             val bmp = try {
