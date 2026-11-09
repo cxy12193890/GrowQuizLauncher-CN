@@ -866,7 +866,7 @@ object WebAdminServer {
     private fun sessionCookie(token: String) =
         "$COOKIE=$token; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_MS / 1000}"
 
-    private fun clearCookie() = "$COOKIE=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"
+    private fun clearCookie() = "$COOKIE=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0"
 
     private fun ok() = JSONObject().put("ok", true).toString()
 
