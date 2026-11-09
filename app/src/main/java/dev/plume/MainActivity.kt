@@ -2569,6 +2569,9 @@ class MainActivity : Activity() {
                     gravity = Gravity.CENTER; maxLines = 4; setPadding(0, dp(4), 0, dp(8)); alpha = 0.75f
                 })
             }
+            addView(label("首次访问如出现证书警告，请先核对上方指纹；不一致时不要继续。", 11f).apply {
+                gravity = Gravity.CENTER; maxLines = 3; setPadding(0, dp(4), 0, dp(8))
+            })
             addView(label(getString(R.string.scan_hint), 12f).apply {
                 gravity = Gravity.CENTER
                 alpha = 0.6f
