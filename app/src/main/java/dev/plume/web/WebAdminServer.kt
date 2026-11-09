@@ -186,12 +186,22 @@ object WebAdminServer {
         val safe = ip.replace(':', '_').replace('%', '_')
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val passwordKey = "tls_password_$safe"
-        val password = prefs.getString(passwordKey, null) ?: randomHex(32).also { prefs.edit().putString(passwordKey, it).apply() }
+        val password = prefs.getString(passwordKey, null) ?: randomHex(32).also {
+            check(prefs.edit().putString(passwordKey, it).commit()) { "Could not persist local TLS keystore password" }
+        }
         val file = File(context.filesDir, "web-admin-$safe.p12")
         val store = KeyStore.getInstance("PKCS12")
-        if (file.exists()) {
+        val existingValid = if (file.isFile) runCatching {
             file.inputStream().use { store.load(it, password.toCharArray()) }
-        } else {
+            val existing = store.getCertificate("tvquizlock") as? java.security.cert.X509Certificate
+                ?: throw IOException("TLS certificate missing")
+            existing.checkValidity()
+            val san = existing.subjectAlternativeNames.orEmpty()
+            check(san.any { it.size > 1 && it[1] == ip }) { "TLS certificate address changed" }
+            true
+        }.getOrDefault(false) else false
+        if (!existingValid) {
+            file.delete()
             store.load(null, password.toCharArray())
             val generator = KeyPairGenerator.getInstance("RSA")
             generator.initialize(2048, random)
