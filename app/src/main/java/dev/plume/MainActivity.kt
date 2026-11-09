@@ -740,7 +740,9 @@ class MainActivity : Activity() {
     }
 
     /** Startup hint for the LAN admin console: same Wi-Fi, phone browser, then background this app. */
-    private fun showWebAdminPrompt(quizAfterOk: Boolean = false) {        if (webPromptShown) return
+    private fun showWebAdminPrompt(quizAfterOk: Boolean = false) {
+        dev.plume.web.WebAdminServer.start(this)
+        if (webPromptShown) return
         val root = findViewById<ViewGroup>(R.id.root) ?: return
         webPromptShown = true
 
@@ -790,8 +792,8 @@ class MainActivity : Activity() {
                     setTypeface(typeface, Typeface.BOLD)
                 })
                 addView(TextView(this@MainActivity).apply {
-                    text = getString(R.string.web_admin_prompt_message, dev.plume.web.WebAdminServer.url(this)) +
-    dev.plume.web.WebAdminServer.certificateFingerprint(this)?.let { "\n\nTLS 证书 SHA-256：\n$it\n首次访问时，核对指纹后再允许浏览器继续。" }.orEmpty()
+                    text = getString(R.string.web_admin_prompt_message, dev.plume.web.WebAdminServer.url(this@MainActivity)) +
+    dev.plume.web.WebAdminServer.certificateFingerprint(this@MainActivity)?.let { "\n\nTLS 证书 SHA-256：\n$it\n首次访问时，核对指纹后再允许浏览器继续。" }.orEmpty()
                     textSize = if (small) 16f else 20f
                     setTextColor(Color.rgb(203, 218, 243))
                     setLineSpacing(0f, 1.25f)
@@ -2203,7 +2205,6 @@ class MainActivity : Activity() {
     private fun setWallpaper(forDark: Boolean, choice: String) {
         prefs.edit().putString("wp_dark", choice).putString("wp_light", choice)
             .remove(photoKey()).putLong(photoAtKey(), System.currentTimeMillis()).apply()
-        Bing.dropIfUnused(applicationContext, prefs) // choosing another wallpaper deletes the Bing picture at once
         dropShowsIfUnused()
         if (choice == ShowsWall.CHOICE) {
             prefs.edit().remove("wp_show_key").putLong("wp_show_at", 0).apply()
@@ -2557,6 +2558,11 @@ class MainActivity : Activity() {
             setPadding(0, dp(4), 0, dp(12))
             addView(ImageView(this@MainActivity).apply { setImageBitmap(qrBitmap(url, dp(200))) })
             addView(label(url, 14f).apply { gravity = Gravity.CENTER; setPadding(0, dp(12), 0, dp(4)) })
+            dev.plume.web.WebAdminServer.certificateFingerprint(this@MainActivity)?.let { fingerprint ->
+                addView(label("TLS 证书 SHA-256：$fingerprint", 10f).apply {
+                    gravity = Gravity.CENTER; maxLines = 4; setPadding(0, dp(4), 0, dp(8)); alpha = 0.75f
+                })
+            }
             addView(label(getString(R.string.scan_hint), 12f).apply {
                 gravity = Gravity.CENTER
                 alpha = 0.6f
