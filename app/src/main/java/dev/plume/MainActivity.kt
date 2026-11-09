@@ -424,7 +424,7 @@ class MainActivity : Activity() {
             stopGallery()
         }
         if (info.firstInstallTime == info.lastUpdateTime && !prefs.contains("wp_light") && !prefs.contains("wp_dark"))
-            prefs.edit().putString("wp_light", FIRST_WALLPAPER).putString("wp_dark", FIRST_WALLPAPER)
+            prefs.edit().putString("wp_light", plainWallpaper(false)).putString("wp_dark", plainWallpaper(true))
                 .putString("theme", "light").putString("glass_style", GlassStyle.FROSTED.key).apply()
         for (key in listOf("wp_light", "wp_dark")) {
             val saved = prefs.getString(key, null)
@@ -6153,7 +6153,6 @@ class MainActivity : Activity() {
             "Pure black" to R.string.wp_pure_black, "Soft white" to R.string.wp_soft_white,
         )
         val BUNDLED_WALLPAPERS = emptyMap<String, Int>()
-        const val FIRST_WALLPAPER = "plain:Soft white"
         val PIN_KEYS = setOf(
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER,
