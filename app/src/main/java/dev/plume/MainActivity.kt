@@ -2916,7 +2916,7 @@ class MainActivity : Activity() {
             group(R.string.group_tv) +
             sectionRow(R.string.section_remote_home) +
             Triple(R.string.lock_layout, rows[R.string.lock_layout]!!, RowStyle(R.drawable.ms_lock, help = getString(R.string.lock_note))) +
-            Triple(R.string.web_admin, page(getString(R.string.web_admin), dev.plume.web.WebAdminServer.url(this)) {
+            Triple(R.string.web_admin, page(getString(R.string.web_admin), dev.plume.web.WebAdminServer.url(this@MainActivity)) {
                 // GrowQuiz: re-show the startup prompt (same Wi-Fi + admin URL), as on every return from background.
                 closeLauncherSettings()
                 showWebAdminPrompt()
