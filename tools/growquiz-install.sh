@@ -41,7 +41,7 @@ PACKAGE=com.tvquizlock.app
 ADMIN=dev.plume.quiz.QuizDeviceAdminReceiver
 VERIFIER_PKG=com.android.packageinstaller
 
-APK=${1:-app/build/outputs/apk/release/app-release.apk}
+APK=${1:-app/build/outputs/apk/debug/app-debug.apk}
 TV_ADDRESS=${2:-}
 ADB=${ADB:-adb}
 
@@ -179,7 +179,7 @@ cat <<EOF
 Installed $PACKAGE $VERSION. The stock launcher was NOT disabled.
 
 Next, on the TV:
-  1. Accept the permission prompt, then pick 宝贝成长桌面 when the TV asks which home app to use.
+  1. Accept the permission prompt, then pick 电视答题锁 when the TV asks which home app to use.
   2. Open the phone console at the address the TV shows (http://<TV IP>:8081) and set a password.
      Age, quiz interval, categories and the question bank all live there.
 

@@ -1,6 +1,5 @@
 <p align="center">
-  <img src="docs/img/banner.png" alt="电视答题锁 TVQuizLock Launcher" width="100%">
-</p>
+  </p>
 
 <p align="center">
   <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue"></a>
@@ -83,7 +82,7 @@
 
 从 [GitHub Releases](https://github.com/cxy12193890/GrowQuizLauncher-CN/releases) 下载最新版 `TVQuizLock-vX.Y.Z.apk`。正式版必须使用项目固定签名密钥；未配置密钥时只生成测试构建，不作为正式发行包。新包名为 `com.tvquizlock.app`，与旧版 `dev.plume.growquiz` 不同，不能覆盖旧包。
 
-> **换版须知**：如果你装的是 v1.6.0 之前的旧版（debug 签名），必须先卸载旧版再安装，卸载会清除学习进度和设置。
+> **换版须知**：本产品已切换独立包名 `com.tvquizlock.app`，旧版 `dev.plume.growquiz` 会作为另一个应用保留。首次切换后请在电视主屏幕设置中选择“电视答题锁”为默认桌面；确认新版本运行正常后，再自行决定是否卸载旧版。卸载旧版会删除旧版本地设置与学习记录。
 
 **方式二：自行构建**
 
@@ -122,7 +121,7 @@ sh tools/growquiz-install.sh TVQuizLock-v1.13.0.apk 192.168.1.20:5555
 # adb 不在 PATH 时指定路径
 ADB="/d/SDK/platform-tools/adb.exe" sh tools/growquiz-install.sh TVQuizLock-v1.13.0.apk 192.168.1.20
 
-# 省略参数则用 app/build/outputs/apk/release/app-release.apk 与当前已连接的唯一设备
+# 省略参数则用 app/build/outputs/apk/debug/app-debug.apk 与当前已连接的唯一设备
 sh tools/growquiz-install.sh
 ```
 
@@ -250,7 +249,7 @@ adb install -r TVQuizLock-vX.Y.Z.apk
 #### 第 1 步：准备 U 盘和 APK
 
 - 用 **8–32G 的普通 U 盘**，格式化为 **FAT32**（exFAT 新电视认、老电视多数不认，拿不准就 FAT32；NTFS 最容易读不出来）。移动硬盘别用，电视 USB 口供电弱，容易识别失败；
-- 从 [GitHub Releases](https://github.com/1zzzzzlll/GrowQuizLauncher/releases) 下载对应版本 APK，**核对文件大小**与发布页一致（下载不完整是最常见的「解析包错误」原因）；
+- 从 [GitHub Releases](https://github.com/cxy12193890/GrowQuizLauncher-CN/releases) 下载对应版本 APK，**核对文件大小**与发布页一致（下载不完整是最常见的「解析包错误」原因）；
 - APK 放 **U 盘根目录**，不要套多层文件夹；文件名改成英文或数字（如 `TVQuizLock.apk`），个别电视解析中文文件名会报错；
 - 确认电视系统为 **Android 8.0（API 26）及以上**：设置 → 本机信息里看「系统/软件版本」。本应用不兼容更老的系统。
 
@@ -357,8 +356,8 @@ adb shell cmd package query-services -a android.intent.action.TTS_SERVICE   # �
 | 设备显示 `offline` | 执行 `adb kill-server` 后重新 `adb connect` |
 | `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | 签名冲突（如 debug 版覆盖正式版），先 `adb uninstall 包名` 再装 |
 | `INSTALL_FAILED_VERIFICATION_FAILURE` | 厂商签名白名单拦截，TCL / 雷鸟常见。见 [TCL / 雷鸟的签名白名单拦截](#tcl--雷鸟的签名白名单拦截)，或直接用 `tools/growquiz-install.sh` |
-| 切到别的应用后答题页不再弹回 | Android 10 起禁止应用在后台启动界面，需「显示在其他应用上层」权限（`SYSTEM_ALERT_WINDOW`）。安装脚本会自动授予；手动装的电视执行 `adb shell appops set dev.plume.growquiz SYSTEM_ALERT_WINDOW allow` |
-| 「遥控器按键 → 添加按键」按了没反应，或设好的按键失效 | 无障碍服务没有在跑。覆盖安装会杀掉进程，部分固件（TCL / 雷鸟实测）之后不再自动绑定，服务处于「已启用但已崩溃」状态。v1.13.1 起启动后会自动重新启用一次；旧版本手动开关一遍无障碍，或执行 `adb shell settings put secure enabled_accessibility_services "$(adb shell settings get secure enabled_accessibility_services \| tr -d '\r'),dev.plume.growquiz/dev.plume.HomeOverride"` |
+| 切到别的应用后答题页不再弹回 | Android 10 起禁止应用在后台启动界面，需「显示在其他应用上层」权限（`SYSTEM_ALERT_WINDOW`）。安装脚本会自动授予；手动装的电视执行 `adb shell appops set com.tvquizlock.app SYSTEM_ALERT_WINDOW allow` |
+| 「遥控器按键 → 添加按键」按了没反应，或设好的按键失效 | 无障碍服务没有在跑。覆盖安装会杀掉进程，部分固件（TCL / 雷鸟实测）之后不再自动绑定，服务处于「已启用但已崩溃」状态。v1.13.1 起启动后会自动重新启用一次；旧版本手动开关一遍无障碍，或执行 `adb shell settings put secure enabled_accessibility_services "$(adb shell settings get secure enabled_accessibility_services \| tr -d '\r'),com.tvquizlock.app/dev.plume.HomeOverride"` |
 | 装完题目不朗读，提示「本机没有可用的语音（TTS）引擎」 | 该电视系统没有预装 TTS 引擎（不少国产电视如此）。装一个离线 TTS 引擎后到系统设置里设为默认即可，做法见[装一个中文语音引擎](#装一个中文语音引擎) |
 | 点击版本号没反应 | 点得不够快或次数不够，有的电视要 8–10 次 |
 | 装完找不到应用图标 | TV 应用可能不在手机式应用列表里，到「设置 → 应用」里确认已安装 |
