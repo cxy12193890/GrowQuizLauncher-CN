@@ -8,6 +8,7 @@
     <string name="web_admin_prompt_title">连接同一个 Wi-Fi</string>
     <string name="web_admin_prompt_message">请让手机连接到与这台电视相同的 Wi-Fi，然后在手机浏览器中打开：\n\n%1$s\n\n首次进入需设置管理密码。点击“知道了”进入成长桌面。</string>
     <string name="web_admin_prompt_button">知道了</string>
+    <string name="web_admin_setup_pending">本机还有初始化未完成：\n%1$s\n用手机打开上面的管理页面，在「运行状态」里可查看并复制对应的修复命令；也可把命令交给手机上的 AI 助手（如 WorkBuddy、豆包）代为执行。</string>
     <string name="override_desc">当 Google TV 主屏幕出现时打开宝贝成长桌面，让主屏幕键回到这里。</string>
     <string name="delete_photo">要删除“%1$s”吗？</string>
     <string name="photo_added">已添加“%1$s”。可以继续发送，或按“完成”。</string>

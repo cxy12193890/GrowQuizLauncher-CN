@@ -14,6 +14,12 @@ Write every entry in ASD-STE100 Simplified Technical English:
 
 Put changes that are not released under `## Unreleased`. Rename that heading to the version number when you release.
 
+## 1.14.3
+
+- **开机弹窗列出未完成初始化。** 连接 Wi-Fi 的开机提示中列出本机缺少的权限与服务。管理页面「运行状态」里有对应修复命令，可复制或交给手机 AI 助手代执行。
+- **弹窗必须读完才能关闭。** 内容超出屏幕时，「知道了」按钮保持置灰。滚动到底后按钮才可选中。内容不满一屏时直接可点。
+- **管理台自检附操作说明。** 红字自检说明命令可长按复制，也可交给 AI 助手代为执行。
+
 ## 1.14.2
 
 - **闹钟延迟有数字。** 上报的闹钟事件记录原定时间与实际延迟毫秒数。降级闹钟晚多久，一眼可见。

@@ -720,9 +720,29 @@ class MainActivity : Activity() {
         }, 3_000)
     }
 
+    /**
+     * GrowQuiz: what this TV still misses before the quiz guards all work, one line each, null when
+     * everything is in place. The boot prompt shows them; the console carries the matching repair
+     * commands, ready to copy or hand to a phone AI assistant.
+     */
+    private fun setupPendingLines(): List<String>? {
+        val lines = mutableListOf<String>()
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
+            lines.add("· 「显示在其他应用上层」权限未授予，切走后答题页回不来")
+        }
+        if (Build.VERSION.SDK_INT >= 31 &&
+            getSystemService(android.app.AlarmManager::class.java)?.canScheduleExactAlarms() == false
+        ) {
+            lines.add("· 「闹钟和提醒」权限未授予，答题时间可能被系统推迟")
+        }
+        if (!DeviceProbe.a11yEnabled(this)) {
+            lines.add("· 「主屏幕键」无障碍服务未开启，无法拦截遥控器影视键")
+        }
+        return lines.takeIf { it.isNotEmpty() }
+    }
+
     /** Startup hint for the LAN admin console: same Wi-Fi, phone browser, then background this app. */
-    private fun showWebAdminPrompt(quizAfterOk: Boolean = false) {
-        if (webPromptShown) return
+    private fun showWebAdminPrompt(quizAfterOk: Boolean = false) {        if (webPromptShown) return
         val root = findViewById<ViewGroup>(R.id.root) ?: return
         webPromptShown = true
 
@@ -788,6 +808,18 @@ class MainActivity : Activity() {
                         topMargin = dp(8)
                     })
                 }
+                // GrowQuiz: the permissions and services this TV still misses, in one line each, so the
+                // parents know the console is not only for settings — it carries the repair commands,
+                // and a phone AI assistant can run them for whoever does not speak adb.
+                setupPendingLines()?.let { lines ->
+                    addView(TextView(this@MainActivity).apply {
+                        text = getString(R.string.web_admin_setup_pending, lines.joinToString("\n"))
+                        textSize = if (small) 14f else 17f
+                        setTextColor(Color.rgb(255, 209, 102))
+                        setLineSpacing(0f, 1.25f)
+                        setPadding(0, dp(14), 0, 0)
+                    })
+                }
             })
         }
         card.addView(scroll, LinearLayout.LayoutParams(MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -823,13 +855,34 @@ class MainActivity : Activity() {
             }
         }
         card.addView(ok, LinearLayout.LayoutParams(MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(16) })
+        // GrowQuiz: the OK button opens only after the card has been read to its end. The pending-setup
+        // lines below the QR are the reason the card runs long, and neither a child nor a parent in a
+        // hurry must close the prompt before the scroll carried them past those lines. A card that
+        // fits the screen without scrolling unlocks at once — nothing to miss then.
+        ok.isEnabled = false
+        ok.alpha = 0.4f
+        fun fullyScrolled(): Boolean {
+            val inner = scroll.getChildAt(0) ?: return true
+            return scroll.height >= inner.height || scroll.scrollY >= inner.height - scroll.height - dp(4)
+        }
+        fun unlockOk(focus: Boolean) {
+            if (ok.isEnabled) return
+            ok.isEnabled = true
+            ok.alpha = 1f
+            if (focus) ok.requestFocus()
+        }
+        scroll.setOnScrollChangeListener { _, _, _, _, _ -> if (fullyScrolled()) unlockOk(false) }
         overlay.addView(card, FrameLayout.LayoutParams(MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER).apply {
             leftMargin = sideMargin
             rightMargin = sideMargin
         })
         root.addView(overlay, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
         overlay.bringToFront()
-        ui.post { ok.requestFocus() }
+        ui.post {
+            // Focus lands on the button when it already works, and on the text (D-pad scrolls it)
+            // while the gate is closed — Down on the scroll walks through, then reaches the button.
+            if (fullyScrolled()) unlockOk(true) else scroll.requestFocus()
+        }
     }
 
     private var webPromptShown = false
