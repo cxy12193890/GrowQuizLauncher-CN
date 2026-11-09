@@ -178,6 +178,14 @@ private class GalleryShow(private val context: Context) : SurfaceHolder.Callback
     private fun draw(c: Canvas, now: Long) = synchronized(lock) {
         c.drawColor(Color.BLACK)
         if (!running) return
+        if (paintings.isEmpty()) {
+            title.textSize = 30f * (c.height / 1080f)
+            title.textAlign = Paint.Align.CENTER
+            title.alpha = 230
+            c.drawText("请先在电视上选择个人照片作为屏保", c.width / 2f, c.height / 2f, title)
+            title.textAlign = Paint.Align.LEFT
+            return
+        }
         val cur = current ?: return
         val fade = ((now - cur.start).toFloat() / cur.fadeMs).coerceIn(0f, 1f)
         previous?.let {
