@@ -433,6 +433,8 @@ class MainActivity : Activity() {
             }
         }
         File(filesDir, "bing.jpg").delete()
+        File(filesDir, "bing.part").delete()
+        prefs.edit().remove("bing_hash").remove("bing_day").remove("bing_try").apply()
         packDir().deleteRecursively()
         if (!prefs.getBoolean("wp_shared", false)) {
             val wasDark = wantDark()
