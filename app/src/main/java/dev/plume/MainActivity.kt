@@ -417,14 +417,19 @@ class MainActivity : Activity() {
         allApps = findViewById(R.id.allApps)
         allAppsGrid = findViewById(R.id.allAppsGrid)
         wifi = findViewById(R.id.wifi)
-        // A new install starts on Arctic Aurora, light, with Frosted glass; an update keeps what it has.
+        // New installs use neutral colours; third-party wallpaper assets are excluded until their rights are verified.
         val info = packageManager.getPackageInfo(packageName, 0)
         if (info.firstInstallTime == info.lastUpdateTime && !prefs.contains("wp_light") && !prefs.contains("wp_dark"))
             prefs.edit().putString("wp_light", FIRST_WALLPAPER).putString("wp_dark", FIRST_WALLPAPER)
                 .putString("theme", "light").putString("glass_style", GlassStyle.FROSTED.key).apply()
-        // GrowQuiz: the bundled 1080p wallpaper is what ships; the 4K upgrade download is disabled on
-        // purpose — a TV box on a slow or air-gapped LAN must never wait on the network to show its home.
-        // fetchFirstWallpaper4k()
+        for (key in listOf("wp_light", "wp_dark")) {
+            val saved = prefs.getString(key, null)
+            if (saved == Bing.CHOICE || saved == "res:Arctic Aurora" || saved?.startsWith("pack:") == true) {
+                prefs.edit().putString(key, plainWallpaper(key == "wp_dark")).apply()
+            }
+        }
+        Bing.file(this).delete()
+        packDir().deleteRecursively()
         if (!prefs.getBoolean("wp_shared", false)) {
             val wasDark = wantDark()
             val choice = prefs.getString(if (wasDark) "wp_dark" else "wp_light", null)
@@ -587,8 +592,6 @@ class MainActivity : Activity() {
         updateFeatured()
         // Auto update check, at most once a day (throttled inside); a find says so on the home screen once.
         ui.post { checkUpdate(false) }
-        Bing.onChanged = bingChanged
-        Bing.refresh(applicationContext, prefs)
         ui.post { updateBadge() } // after layout, so the icon has its size
     }
 
@@ -1490,7 +1493,6 @@ class MainActivity : Activity() {
     private fun wallpaperChoices(forDark: Boolean): List<Pair<String, String>> =
         listOf(plainWallpaper(forDark).let { wallpaperName(it) to it }) +
             BUNDLED_WALLPAPERS.keys.map { wallpaperName("res:$it") to "res:$it" } +
-            (wallpaperName(Bing.CHOICE) to Bing.CHOICE) +
             (wallpaperName(ShowsWall.CHOICE) to ShowsWall.CHOICE) +
             (wallpaperDir()?.listFiles { f -> f.extension.lowercase() in setOf("jpg", "jpeg", "png", "webp") }
                 ?.sortedBy { it.name }?.map { it.nameWithoutExtension to "file:${it.name}" } ?: emptyList()) +
