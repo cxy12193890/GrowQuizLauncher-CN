@@ -85,9 +85,9 @@ object WebAdminServer {
             return
         }
         server = try {
-            createTlsServer(app, ip, 8081)
-        } catch (_: IOException) {
-            try { createTlsServer(app, ip, 0) } catch (second: Exception) {
+            createTlsServerSocket(app, ip, 8081)
+        } catch (_: Exception) {
+            try { createTlsServerSocket(app, ip, 0) } catch (second: Exception) {
                 dev.plume.DiagLog.event("web_admin_fail", second.message ?: second.javaClass.simpleName)
                 null
             }
@@ -182,7 +182,7 @@ object WebAdminServer {
     private fun bank(context: Context): QuestionBank =
         bank ?: QuestionBank(context.applicationContext).also { bank = it }
 
-    private fun createTlsServer(context: Context, ip: String, port: Int): SSLServerSocket {
+    fun createTlsServerSocket(context: Context, ip: String, port: Int): SSLServerSocket {
         val safe = ip.replace(':', '_').replace('%', '_')
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val passwordKey = "tls_password_$safe"
