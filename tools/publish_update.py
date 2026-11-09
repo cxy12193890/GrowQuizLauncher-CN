@@ -1,65 +1,76 @@
 #!/usr/bin/env python3
-"""发布一个新版本：在 GitHub 仓库创建 release（附 APK 与发版说明）。
+"""给 TVQuizLock 创建版本标签，触发 GitHub Actions 自动构建并发布正式 APK。
 
 用法:
-    python tools/publish_update.py path/to/TVQuizLock-vX.Y.Z.apk
+    python tools/publish_update.py
 
-流程:
-  1. 校验文件名 TVQuizLock-vX.Y.Z.apk
-  2. 从 CHANGELOG.md 提取该版本小节作为发版说明
-  3. gh release create 上传 APK 资产
+前置条件:
+  - 当前分支必须是 commercial-dev，且工作区干净；
+  - app/build.gradle.kts 的 versionName/versionCode 与 CHANGELOG.md 一致；
+  - docs/ASSET-LICENSE-REVIEW.md 中 RELEASE_APPROVED 必须为 YES；
+  - GitHub 仓库已配置固定签名密钥的 Actions Secrets；
+  - 本机 git 已配置可推送到 origin 的权限。
 
-发布后无需再手动传服务器：mylinux 上的同步脚本（growquiz-sync.timer，每 3 小时）会自动
-把 release 的 APK 与发版说明同步到 https://www.rengouzi.top:8443/growquiz/，TV 端即可
-检测到新版本并下载安装。
-
-发版前记得:
-  - app/build.gradle.kts 的 versionName/versionCode 与文件名一致且高于已装版本；
-  - 本次改动已提交并推送到 commercial-dev（release 打在远端最新提交上）；
-  - 本机 gh 已登录（gh auth status）。
+脚本只推送版本标签，不在本机上传 APK。标签推送后，release-apk.yml 会执行测试、
+使用固定签名密钥构建 APK，并创建 GitHub Release。正式发布前会再次检查授权状态。
 """
 
 import re
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 REPO = "cxy12193890/GrowQuizLauncher-CN"
-NAME_RE = re.compile(r"^TVQuizLock-v(\d+\.\d+(?:\.\d+)?)\.apk$")
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def output(cmd: list[str]) -> str:
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        sys.exit(f"命令失败 (exit {result.returncode}): {' '.join(cmd)}\n{result.stderr}")
+    return result.stdout.strip()
 
 
 def run(cmd: list[str]) -> None:
     print("+", " ".join(cmd))
-    result = subprocess.run(cmd)
+    result = subprocess.run(cmd, check=False)
     if result.returncode != 0:
         sys.exit(f"命令失败 (exit {result.returncode}): {' '.join(cmd)}")
 
 
 def main() -> None:
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 1:
         sys.exit(__doc__)
-    apk = Path(sys.argv[1])
-    if not apk.is_file():
-        sys.exit(f"找不到文件: {apk}")
-    m = NAME_RE.match(apk.name)
-    if not m:
-        sys.exit(f"文件名需形如 GrowQuiz-v1.2.0.apk，当前: {apk.name}")
-    version = m.group(1)
 
-    changelog = (Path(__file__).resolve().parent.parent / "CHANGELOG.md").read_text(encoding="utf-8").replace("\r", "")
-    parts = changelog.split(f"## {version}\n", 1)
-    if len(parts) < 2:
-        sys.exit(f"CHANGELOG.md 中没有 \"## {version}\" 小节")
-    notes = parts[1].split("\n## ", 1)[0].strip()
-    with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as f:
-        f.write(notes)
-        notes_path = f.name
+    review = ROOT / "docs" / "ASSET-LICENSE-REVIEW.md"
+    if not review.is_file() or not re.search(r"^RELEASE_APPROVED: YES$", review.read_text(encoding="utf-8"), re.M):
+        sys.exit("发行已阻止：题库或素材授权尚未全部核实。先完成 docs/ASSET-LICENSE-REVIEW.md。")
 
-    run(["gh", "release", "create", f"v{version}", str(apk),
-         "--repo", REPO, "--title", f"TVQuizLock v{version}", "--notes-file", notes_path])
-    print(f"已发布 v{version}：https://github.com/{REPO}/releases/tag/v{version}")
-    print("mylinux 每 3 小时自动同步到更新目录，无需手动上传。")
+    branch = output(["git", "branch", "--show-current"])
+    if branch != "commercial-dev":
+        sys.exit(f"请切换到 commercial-dev 分支后再发布，当前分支：{branch}")
+
+    if output(["git", "status", "--porcelain"]):
+        sys.exit("工作区存在未提交改动。请先提交并推送所有改动。")
+
+    gradle = (ROOT / "app" / "build.gradle.kts").read_text(encoding="utf-8")
+    version = re.search(r'versionName\s*=\s*"([^"]+)"', gradle)
+    if not version:
+        sys.exit("无法从 app/build.gradle.kts 读取 versionName")
+    version_name = version.group(1)
+
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8").replace("\r", "")
+    if f"## {version_name}\n" not in changelog:
+        sys.exit(f"CHANGELOG.md 中没有 \"## {version_name}\" 小节")
+
+    tag = f"v{version_name}"
+    if output(["git", "tag", "--list", tag]):
+        sys.exit(f"标签 {tag} 已存在；请先提升 versionName/versionCode。")
+
+    run(["git", "push", "origin", "HEAD:commercial-dev"])
+    run(["git", "tag", "-a", tag, "-m", f"TVQuizLock {version_name}"])
+    run(["git", "push", "origin", tag])
+    print(f"已推送 {tag}。GitHub Actions 将自动构建并发布：https://github.com/{REPO}/actions")
 
 
 if __name__ == "__main__":

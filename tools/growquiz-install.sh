@@ -4,7 +4,7 @@ set -eu
 # growquiz-install.sh: install TVQuizLock on a TV over adb, then make it reachable as a home screen.
 #
 # Usage:  sh tools/growquiz-install.sh [APK] [TV_IP[:PORT]]
-#   APK            defaults to app/build/outputs/apk/release/app-release.apk
+#   APK            defaults to app/build/outputs/apk/debug/app-debug.apk
 #   TV_IP[:PORT]   defaults to the one device adb already sees; port defaults to 5555
 #   ADB=...        point at another adb, e.g. ADB="/d/SDK/platform-tools/adb.exe"
 #

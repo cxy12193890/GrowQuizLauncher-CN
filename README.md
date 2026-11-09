@@ -81,27 +81,27 @@
 
 **方式一：直接下载（推荐）**
 
-从 [GitHub Releases](https://github.com/cxy12193890/GrowQuizLauncher-CN/releases) 下载最新版 `TVQuizLock-vX.Y.Z.apk`。正式版必须使用项目固定签名密钥；未配置密钥时只生成测试构建，不作为正式发行包。
+从 [GitHub Releases](https://github.com/cxy12193890/GrowQuizLauncher-CN/releases) 下载最新版 `TVQuizLock-vX.Y.Z.apk`。正式版必须使用项目固定签名密钥；未配置密钥时只生成测试构建，不作为正式发行包。新包名为 `com.tvquizlock.app`，与旧版 `dev.plume.growquiz` 不同，不能覆盖旧包。
 
 > **换版须知**：如果你装的是 v1.6.0 之前的旧版（debug 签名），必须先卸载旧版再安装，卸载会清除学习进度和设置。
 
 **方式二：自行构建**
 
 ```sh
-git clone https://github.com/1zzzzzlll/GrowQuizLauncher.git
-cd GrowQuizLauncher
+git clone https://github.com/cxy12193890/GrowQuizLauncher-CN.git
+cd GrowQuizLauncher-CN
 ./gradlew assembleRelease
-# 产物：app/build/outputs/apk/release/app-release.apk
+# 产物：app/build/outputs/apk/debug/app-debug.apk（测试构建）
 ```
 
-需要 JDK 17+ 与 Android SDK（`compileSdk 36`）。正式 Release 构建必须通过本地 `keystore.properties` 或 GitHub Actions Secrets 提供固定签名密钥；未提供时 Release APK 不签名，Debug APK 仅用于测试。
+需要 JDK 17+ 与 Android SDK（`compileSdk 36`）。正式 Release 构建必须通过本地 `keystore.properties` 或 GitHub Actions Secrets 提供固定签名密钥；未提供时 Release APK 不签名，Debug APK 仅用于测试。签名配置见 [docs/RELEASE-SIGNING.md](docs/RELEASE-SIGNING.md)。
 
 ### 2. 安装到电视
 
 ```sh
 # 电视开启开发者选项与网络调试后
 adb connect 192.168.1.20:5555
-adb install -r app-release.apk
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
 也可以用 U 盘 + 文件管理器、或电视上的 Downloader 类应用侧载安装。各品牌电视开启 ADB 的具体路径差异很大，完整的品牌速查表和 AI 辅助安装方法见下文[附录：把 APK 装进电视的完整指南](#附录把-apk-装进电视的完整指南)。
@@ -315,7 +315,7 @@ adb install -r TVQuizLock.apk
 
 ```
 verifier: fetch signature info from: com.tcl.cyberui
-verifier: signature does not match for tcl dev.plume.growquiz, will not be installed!
+verifier: signature does not match for tcl com.tvquizlock.app, will not be installed!
 ```
 
 **以下办法都无效**（实机验证过）：`settings put global verifier_verify_adb_installs 0`、`settings put global package_verifier_enable 0`、停用 `com.tcl.guard`（电视卫士）。校验发生在 `com.android.packageinstaller` 内部、早于 AOSP 的 verifier，全局开关根本够不到它。
@@ -375,9 +375,9 @@ adb shell cmd package query-services -a android.intent.action.TTS_SERVICE   # �
 | 题目生成 | `tools/generate_questions.py` | 确定性生成 + 校验题库（数值干扰项自动去重、答案唯一） |
 | 答题记录与自定义题 | `quiz/QuestionBank.kt` | 记录每题答对次数（满 5 次自动禁用），合并家长自定义题与题目启停状态 |
 | 局域网管理台 | `web/WebAdminServer.kt` | 纯 JDK `ServerSocket` 单页服务：设置、题库维护、批量导入（`/import` 独立页）、改密码、TTS 测试；SHA-256 加盐口令、24 小时会话 Cookie，无第三方依赖 |
-| 自动更新 | `ApkProvider.kt` + 更新服务器 | 每天检查一次自有更新服务器；服务器每 3 小时从 GitHub Releases 同步最新发版 |
+| 自动更新 | `ApkProvider.kt` + GitHub Releases API | 每天直接检查本项目最新 Release，安装时从本项目 Release 资产下载 APK，不依赖第三方更新服务器 |
 | 本地诊断 | `DiagLog.kt` + `DeviceProbe.kt` + `CrashLog.kt` + `Vendor.kt` + `quiz/PopupAudit.kt` | 诊断事件与崩溃记录仅保存在电视本机应用私有目录，不会上传设备信息、题目记录或崩溃日志；`DeviceProbe` 只检查本机无障碍和闹钟授权状态；`PopupAudit` 用「上次闹钟时间 vs 上次答题页打开时间」的比对发现被系统静默吞掉的答题弹窗（纯 JVM，有单测） |
-| 语音 | `quiz/QuizVoice.kt` + `quiz/SpeechText.kt` + `quiz/TtsProbe.kt` + `quiz/TtsDiagnosis.kt` | `QuizVoice` 是全局唯一的 TTS 引擎，桌面启动即预热；`SpeechText` 把题目改写成可朗读的中文（纯 JVM，有单测）；`TtsProbe` 供管理台检测引擎可用性，并列出本机已装引擎；`TtsDiagnosis` 把「没装引擎」与「引擎启动失败」分成两种上报事件（纯 JVM，有单测） |
+| 语音 | `quiz/QuizVoice.kt` + `quiz/SpeechText.kt` + `quiz/TtsProbe.kt` + `quiz/TtsDiagnosis.kt` | `QuizVoice` 是全局唯一的 TTS 引擎，桌面启动即预热；`SpeechText` 把题目改写成可朗读的中文（纯 JVM，有单测）；`TtsProbe` 供管理台检测引擎可用性，并列出本机已装引擎；`TtsDiagnosis` 把「没装引擎」与「引擎启动失败」分成两种本地诊断事件（纯 JVM，有单测） |
 | 桌面本体 | `dev.plume.*` | 上游 Plume 的桌面、壁纸、屏保、按键重映射等 |
 
 ## 题库
@@ -414,7 +414,7 @@ tools/                               # 安装脚本、题库生成、上游设�
 
 - **强锁定依赖 Device Owner**：不配置时只是"默认桌面"，无法阻止通过系统设置切走。
 - **遥控器专用键**：Netflix 等一键直达键可绕过桌面；可被本应用拦截的键请按「快速开始」第 6 步设为「无操作」，不经过 Android 按键系统的键则无法拦截。
-- **精确闹钟**：Android 12+ 若未授予「闹钟和提醒」权限，触发时间可能被系统推迟数分钟（首次上报数据显示多数未授权设备被拒）；桌面会提示一次，管理台总览常驻显示该状态。
+- **精确闹钟**：Android 12+ 若未授予「闹钟和提醒」权限，触发时间可能被系统推迟数分钟（此前兼容性测试发现不少设备未授予该权限）；桌面会提示一次，管理台总览常驻显示该状态。
 - **TTS**：不少国产电视出厂不带语音引擎，此时题目照常显示但不朗读；装一个离线 TTS 引擎并在系统设置里设为默认即可，其余功能不受影响。
 - **Fire TV**：Fire OS 不把 Home 键交给第三方应用，首个桌面会先闪现约 5 秒；细节见[上游文档](docs/UPSTREAM-PLUME.md#fire-tv)。
 - **国产电视的桌面还原**：小米 MIUI 每次开机都会把默认桌面还给自带桌面，「设为默认桌面」不能持久；TCL 开机时无视默认桌面设置，直接拉起自带桌面。开启「主屏幕键」无障碍服务后，自带桌面（含 TCL、海信、创维、乐视、腾讯极光等）一出现本应用就自动切回；开机后服务绑定时也会主动检查一次前台，把还停留在厂商桌面的电视切回来。个别固件（海信聚好看、腾讯极光盒子的部分版本）不向无障碍服务报告窗口变化，这类机型暂时无法自动切回。
@@ -422,13 +422,13 @@ tools/                               # 安装脚本、题库生成、上游设�
 
 ## 隐私
 
-没有账号、没有广告。应用只在以下情况使用网络：每天一次的更新检查（发现新版本后自动下载安装）、每天一次的兼容性上报、加载继续观看的海报、你主动选择的在线壁纸/屏保/天气。管理台只在局域网监听，密码与设置存在电视本地。
+没有账号、没有广告。应用只在以下情况使用网络：每日向本项目 GitHub Releases API 检查版本；加载继续观看的海报；用户主动选择在线壁纸、屏保或天气。管理台只在局域网监听，密码与设置保存在电视本地。
 
-兼容性上报（v1.14.0 起）用于适配不同品牌电视，内容只有三类：设备信息快照（品牌/型号/固件指纹/Android 版本/权限与语音引擎状态，以及系统里可作为桌面的应用包名）、诊断事件（崩溃、开机不启动、答题不弹出、答题被压后台、无障碍假死等）、上次崩溃的调用栈。设备以首次运行生成的随机编号标识，不采集任何硬件标识；**不含**答题内容、成绩、观看时长等使用数据。
+本应用已移除自动兼容性报告上传。崩溃记录、诊断事件与本机权限状态只保存在电视应用私有存储，不上传到开发者服务器。照片或视频通过管理页添加时，手机与电视在同一 Wi-Fi 内直接传输。
 
 ## 用户交流
 
-设置菜单的「关于」页可查看当前版本、扫码打开项目主页、手动检查更新，并附有用户交流 QQ 群二维码——电视上用手机扫码即可加群反馈问题。
+设置菜单的「关于」页可查看当前版本、项目源码与许可信息，并扫码打开本项目仓库；原作者 QQ 群入口已移除。
 
 ## 参与贡献
 
@@ -449,5 +449,5 @@ tools/                               # 安装脚本、题库生成、上游设�
 
 - 已移除自动设备兼容报告上传。崩溃记录和诊断事件仅保存在电视本机，不会发送到开发者服务器。
 - 应用更新只查询本项目 GitHub Releases API，并从本项目 Release 资产下载 APK；不再访问原作者的更新服务器。
-- 本项目是基于 Plume Launcher 的 GPL-3.0 二次开发。分发修改版时必须遵守 GPL-3.0，并提供对应完整源码。
+- 本项目是基于 Plume Launcher 的 GPL-3.0 二次开发。分发修改版时必须遵守 GPL-3.0，并提供对应完整源码。题库和部分壁纸素材的商业授权尚未确认，发行状态见 [docs/ASSET-LICENSE-REVIEW.md](docs/ASSET-LICENSE-REVIEW.md)。
 - 题库与部分壁纸素材的商业授权仍在核验中；在授权清单标记为通过前，不得发布收费正式版。

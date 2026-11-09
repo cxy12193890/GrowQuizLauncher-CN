@@ -31,12 +31,16 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Prepare optional fixed signing key
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/tvquizlock-release.keystore"
-          test -s "$RUNNER_TEMP/tvquizlock-release.keystore"
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/tvquizlock-release.keystore"
+            test -s "$RUNNER_TEMP/tvquizlock-release.keystore"
+            echo "Fixed signing key is available."
+          else
+            echo "::notice::No fixed signing key configured; the debug APK will be signed for testing and the release APK will be unsigned."
+          fi
 
       - name: Run tests, lint and build debug plus release APKs
         env:

@@ -552,7 +552,7 @@ class MainActivity : Activity() {
                 toast("请在「设置 → 应用 → 特殊权限」里允许「显示在其他应用上层」，否则切走后答题页回不来", long = true, system = true)
             }
         }
-        // GrowQuiz: the first day of reports showed nearly every Android 12+ TV with the exact-alarm
+        // GrowQuiz: initial compatibility testing found many Android 12+ TVs without exact-alarm
         // grant denied, which pushes the quiz time by minutes. Same shape as the overlay note above:
         // say it once, never jump to Settings on our own.
         if (Build.VERSION.SDK_INT >= 31 &&
@@ -686,9 +686,9 @@ class MainActivity : Activity() {
      * silently. [ensureHomeService] cannot see it — the setting still lists the service. Rewriting the
      * setting makes the system bind it again. Runs once, after the normal bind has had a few seconds.
      *
-     * The *detection* is brand-blind: a dead bind is reported from every TV, so the daily report
+     * The *detection* is brand-blind: a dead bind is reported from every TV, so the local event log
      * shows which firmware share the disease. The *cure* (rewriting the secure setting) is verified
-     * on TCL only, so it stays behind [Vendor.isTcl] until another brand's reports prove it there.
+     * on TCL only, so it stays behind [Vendor.isTcl] until another brand's local checks prove it there.
      */
     private fun reviveHomeService() {
         if (revived || !homeServiceOn()) return
@@ -2006,7 +2006,7 @@ class MainActivity : Activity() {
                             if (photo.download(packDir()) { openStream(PACK_URL + photo.file + "?v=" + photo.sha) }) changed += "pack:${photo.file}"
                         } catch (e: Exception) {
                             updateFailed = true
-                            android.util.Log.w("Plume", "wallpaper update: ${photo.file}", e)
+                            android.util.Log.w("TVQuizLock", "wallpaper update: ${photo.file}", e)
                         }
                     }
                     photos
@@ -2933,7 +2933,7 @@ class MainActivity : Activity() {
                 HomeOverride.running?.applyKeyFilter()
                 renderSettings(R.string.smooth_volume)
             },
-            R.string.default_launcher to Triple(getString(R.string.default_launcher), if (isDefaultHome()) "Plume" else getString(R.string.press_to_set)) { makeDefaultHome() },
+            R.string.default_launcher to Triple(getString(R.string.default_launcher), if (isDefaultHome()) getString(R.string.app_name) else getString(R.string.press_to_set)) { makeDefaultHome() },
             R.string.updates to Triple(getString(R.string.updates), when {
                 updating -> getString(R.string.updating)
                 checking -> getString(R.string.checking)
@@ -5656,7 +5656,7 @@ class MainActivity : Activity() {
             readPrograms(TvContract.buildPreviewProgramsUriForChannel(id), hidden, "ch$id")
         }
         val all = watchNext + channels
-        android.util.Log.i("Plume", "continue watching: ${watchNext.size} from Watch Next, ${channels.size} from ${on.size} channels")
+        android.util.Log.i("TVQuizLock", "continue watching: ${watchNext.size} from Watch Next, ${channels.size} from ${on.size} channels")
         publishingPkgs = all.mapNotNull { it.second.pkg }.toSet()
         val off = prefs.getStringSet("cw_off", emptySet())!!
         return newestPerApp(all.filter { it.second.pkg !in off }.distinctBy { it.second.intent ?: it.second.title }, PER_APP) { it.group }
@@ -6299,7 +6299,7 @@ class MainActivity : Activity() {
         const val FIRST_WALLPAPER = "res:Arctic Aurora"
         // ponytail: pinned to today's blob; if the photo changes on main the fetch fails and the 1080p copy stays.
         val FIRST_WALLPAPER_4K = PackPhoto("05_Arctic_Aurora.webp", 1_145_394, "fb288f54f21328355cf2d2c0cb23148069888628")
-        const val PACK_URL = "https://raw.githubusercontent.com/aradhyas8/Plume_Launcher/main/wallpapers/"
+        const val PACK_URL = "https://raw.githubusercontent.com/cxy12193890/GrowQuizLauncher-CN/main/wallpapers/"
         val PIN_KEYS = setOf(
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER,

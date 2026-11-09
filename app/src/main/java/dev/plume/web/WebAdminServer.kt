@@ -58,8 +58,8 @@ object WebAdminServer {
             try {
                 ServerSocket(0) // 8081 busy: any free port, the settings row shows it
             } catch (second: IOException) {
-                // GrowQuiz: the parents' console is the only way to reach this TV's settings; if it
-                // cannot listen at all, the report must say so instead of nobody knowing.
+                // The parents' console is the local way to reach this TV's settings; record a local
+                // diagnostic event if the port cannot be opened.
                 dev.plume.DiagLog.event("web_admin_fail", second.message ?: second.javaClass.simpleName)
                 null
             }
