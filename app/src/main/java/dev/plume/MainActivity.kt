@@ -2693,12 +2693,10 @@ class MainActivity : Activity() {
                 renderSettings(R.string.weather_units)
             },
             R.string.weather_location to Triple(getString(R.string.weather_location), if (manualCity()) prefs.getString("geo_city", null) ?: "" else "未设置") { pickCity() },
-            R.string.screensaver to Triple(getString(R.string.screensaver), when {
-                downloading -> getString(R.string.downloading_gallery)
-                !galleryOn() -> screensaverName()
-                aerialScreensaverOn() -> getString(R.string.aerial_views)
-                else -> photoScreensaver()?.let { wallpaperName(it) } ?: getString(R.string.gallery)
-            }) { pickScreensaver() },
+            R.string.screensaver to Triple(getString(R.string.screensaver),
+                if (!galleryOn()) screensaverName()
+                else photoScreensaver()?.let { wallpaperName(it) } ?: getString(R.string.gallery)
+            ) { pickScreensaver() },
             R.string.test_screensaver to Triple(getString(R.string.test_screensaver), "") { testScreensaver() },
             R.string.screensaver_timing to Triple(getString(R.string.screensaver_timing), "") { openScreensaverSettings() },
             R.string.setup_home to Triple(getString(R.string.setup_home), "") { closeLauncherSettings(); startHomeSetup() },
