@@ -136,7 +136,7 @@
       <p class="muted">为这台电视设置一个管理密码，之后进入控制端都需要它。设置后，电视上的 Wi-Fi、系统设置和桌面设置入口也会要求输入此密码。</p>
       <div class="field">
         <label>管理密码</label>
-        <input id="setupPassword" type="password" placeholder="至少 6 位">
+        <input id="setupPassword" type="password" placeholder="至少 12 位，建议使用独立长密码">
       </div>
       <div class="field">
         <label>确认密码</label>
@@ -275,7 +275,7 @@
         </div>
         <div id="pwForm" class="hidden" style="padding:10px 0">
           <div class="field"><label>原密码</label><input id="pwOld" type="password" placeholder="输入当前管理密码"></div>
-          <div class="field"><label>新密码</label><input id="pwNew" type="password" placeholder="至少 6 位"></div>
+          <div class="field"><label>新密码</label><input id="pwNew" type="password" placeholder="至少 12 位，建议使用独立长密码"></div>
           <div class="field"><label>确认新密码</label><input id="pwNew2" type="password" placeholder="再输入一次"></div>
           <button id="pwBtn" class="primary">确认修改</button>
           <div id="pwMsg" class="msg"></div>
@@ -653,7 +653,7 @@
     $('setupBtn').onclick = async () => {
       const p1 = $('setupPassword').value, p2 = $('setupPassword2').value;
       if (p1 !== p2) return msg($('setupMsg'), '两次输入的密码不一致', false);
-      if (p1.length < 6) return msg($('setupMsg'), '密码至少 6 位', false);
+      if (p1.length < 12) return msg($('setupMsg'), '密码至少 12 位', false);
       try {
         await api('/api/setup', { password: p1 });
         msg($('setupMsg'), '已保存，正在进入…', true);
@@ -722,7 +722,7 @@
     $('pwBtn').onclick = async () => {
       const old = $('pwOld').value, fresh = $('pwNew').value, again = $('pwNew2').value;
       if (!old) return msg($('pwMsg'), '请输入原密码', false);
-      if (fresh.length < 6) return msg($('pwMsg'), '新密码至少 6 位', false);
+      if (fresh.length < 12) return msg($('pwMsg'), '新密码至少 12 位', false);
       if (fresh !== again) return msg($('pwMsg'), '两次输入的新密码不一致', false);
       try {
         await api('/api/password_change', { old, new: fresh });
