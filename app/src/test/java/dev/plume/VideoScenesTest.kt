@@ -14,7 +14,7 @@ class VideoScenesTest {
     }
 
     @Test fun parserReadsOnlyTheProvidedHttpsSceneMetadata() {
-        val raw = "NASA Earth\\tEarth\\tNight view\\tnasa_test.mp4\\thttps://example.invalid/nasa_test.mp4\\n".toByteArray()
+        val raw = "NASA Earth\tEarth\tNight view\tnasa_test.mp4\thttps://example.invalid/nasa_test.mp4\n".toByteArray()
         val compressed = ByteArrayOutputStream().also { out -> GZIPOutputStream(out).use { it.write(raw) } }.toByteArray()
         val scenes = parseVideoScenes(ByteArrayInputStream(compressed))
         assertEquals(1, scenes.size)
