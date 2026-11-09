@@ -8,12 +8,6 @@ TVQuizLock 是基于开源项目进行修改的衍生作品。产品名称、品
 - 许可：GNU GPL-3.0，见本仓库根目录 `LICENSE`
 - 本项目对其进行了修改；分发时必须提供对应完整源码并保留许可声明。
 
-## Fraunces
-
-- 字体项目：<https://github.com/undercasetype/Fraunces>
-- 版权：Copyright 2018 The Fraunces Project Authors
-- 许可：SIL Open Font License 1.1，见 `LICENSES/OFL-1.1.txt`
-
 ## Google Material Symbols
 
 - 来源：<https://developers.google.com/fonts/docs/material_symbols>
@@ -41,3 +35,8 @@ NASA 内容通常可按其媒体指南使用，但第三方版权素材、可识
 - Apple Aerial / Amazon Fire TV 视频：属于相应权利方内容，不得将其作为本软件自有素材重新分发。
 
 授权清单未通过前，不得发布收费正式版。
+
+
+## Font assets
+
+The Fraunces binary was removed from the commercial branch because the exact binary-to-license provenance had not been verified. The app uses the Android system serif typeface instead.
