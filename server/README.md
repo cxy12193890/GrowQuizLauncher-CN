@@ -22,3 +22,20 @@ scp server/growquiz-*.* mylinux:/root/growquiz/
 ssh mylinux 'cp /root/growquiz/growquiz-*.service /root/growquiz/growquiz-*.timer /etc/systemd/system/ \
   && systemctl daemon-reload && systemctl enable --now growquiz-sync.timer growquiz-report'
 ```
+
+## report-tool：报告处理标记（避免重复分析）
+
+```sh
+/root/growquiz/report-tool pending            # 列出未处理的报告（设备目录下、非 processed/、不含 latest/）
+/root/growquiz/report-tool done <file...>     # 分析完归档到同目录 processed/ 子目录
+```
+
+处理约定：每份报告分析完（无论有无新问题）就 `report-tool done` 归档；下次只看 `pending` 的输出。目录结构：
+
+```
+/root/growquiz-reports/
+  <设备ID>/
+    20261109-101515.json          ← 未处理
+    processed/20261109-101515.json ← 已分析归档
+  latest/<设备ID>.json            ← 每台最新一份速查（不参与处理流程）
+```
