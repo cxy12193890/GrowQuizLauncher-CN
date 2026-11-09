@@ -1506,10 +1506,13 @@ class MainActivity : Activity() {
     private fun currentWallpaper(forDark: Boolean = dark) =
         prefs.getString(if (forDark) "wp_dark" else "wp_light", null)?.let { movedWallpaper(it) } ?: defaultWallpaper(forDark)
 
-    /** Keep installed pack photos; only unavailable legacy choices fall back to a plain colour. */
+    /** Legacy selections pointing to unverified third-party sources are migrated to plain backgrounds. */
     private fun movedWallpaper(choice: String): String {
-        val file = choice.removePrefix("pack:")
-        if (choice.startsWith("pack:") && packFileName(file) && File(packDir(), file).isFile) return choice
+        if (choice == Bing.CHOICE || choice == "res:Arctic Aurora" || choice.startsWith("pack:")) {
+            val darkPack = choice.removePrefix("pack:") in setOf("hemisferic.webp", "light-trails.webp", "t-centralen.webp",
+                "obsidian-dunes.webp", "petrol-current.webp", "copper-eclipse.webp", "indigo-ridge.webp", "aubergine-fold.webp")
+            return plainWallpaper(darkPack)
+        }
         return when (choice) {
             "res:Rockies (day)", "res:Mist (day)", "res:Porcelain Dunes",
             "pack:niteroi.webp", "pack:valencia-mist.webp", "pack:muralla-roja.webp",
@@ -1657,12 +1660,10 @@ class MainActivity : Activity() {
     private fun text2() = if (glassActive()) 0xFFCCCCCC.toInt() else DARK_TEXT_2
 
     private fun wallpaperName(choice: String) = when {
-        choice == Bing.CHOICE -> getString(R.string.bing_daily)
         choice == ShowsWall.CHOICE -> getString(R.string.shows_wallpaper)
         choice.startsWith("video:") -> videoScenes(this).firstOrNull { "video:${it.file}" == choice }?.name
             ?: choice.removePrefix("video:").substringBeforeLast('.')
         choice.startsWith("folder:") -> getString(R.string.folder_name, choice.substringAfter(':').substringAfter(':'))
-        choice.startsWith("pack:") -> packPhotoName(choice.removePrefix("pack:"))
         else -> choice.substringAfter(':').substringBeforeLast('.').let { n -> WALLPAPER_NAMES[n]?.let { getString(it) } ?: n }
     }
 
@@ -1838,25 +1839,14 @@ class MainActivity : Activity() {
         }
     }
 
-    /** The downloaded 4K pack photo for a bundled wallpaper, if there is one. */
-    private fun packFor(bundled: String) =
-        packDir().listFiles { f -> f.isFile && packFileName(f.name) && packPhotoName(f.name) == bundled }?.firstOrNull()
-
-    /** While Arctic Aurora is in use, get its 4K photo once; until then, and if that fails, the 1080p copy shows. */
-    // GrowQuiz: fetchFirstWallpaper4k() is gone — the home screen never waits on the network. The
-    // bundled Arctic Aurora picture shows right away; a parent can still pick any local wallpaper.
-
     private fun decodeWallpaper(choice: String): Bitmap? {
         // A plain colour has no picture. It is the fallback when a picture fails (Bing not downloaded yet): not a file.
         if (choice.startsWith("plain:")) return null
         BUNDLED_WALLPAPERS[choice.removePrefix("res:")]?.let { res ->
-            packFor(choice.removePrefix("res:"))?.let { f -> return fitWallpaper { f.inputStream() } }
             return BitmapFactory.decodeResource(resources, res)
         }
         return when {
-            choice == Bing.CHOICE -> fitWallpaper { Bing.file(this).inputStream() }
             choice == ShowsWall.CHOICE -> fitWallpaper { ShowsWall.file(this).inputStream() }
-            choice.startsWith("pack:") -> fitWallpaper { File(packDir(), choice.removePrefix("pack:")).inputStream() }
             choice.startsWith("folder:") -> {
                 val uri = ContentUris.withAppendedId(PHOTOS, folderPhoto(choice) ?: return null)
                 fitWallpaper { contentResolver.openInputStream(uri) ?: throw IOException("gone: $uri") }
@@ -2220,7 +2210,6 @@ class MainActivity : Activity() {
         prefs.edit().putString("wp_dark", choice).putString("wp_light", choice)
             .remove(photoKey()).putLong(photoAtKey(), System.currentTimeMillis()).apply()
         Bing.dropIfUnused(applicationContext, prefs) // choosing another wallpaper deletes the Bing picture at once
-        if (choice == Bing.CHOICE) Bing.refresh(applicationContext, prefs, force = true)
         dropShowsIfUnused()
         if (choice == ShowsWall.CHOICE) {
             prefs.edit().remove("wp_show_key").putLong("wp_show_at", 0).apply()
@@ -3689,10 +3678,8 @@ class MainActivity : Activity() {
                 val small = BitmapFactory.Options().apply { inSampleSize = if (big) 4 else 16 }
                 when {
                     choice.startsWith("res:") -> BUNDLED_WALLPAPERS[choice.removePrefix("res:")]?.let { BitmapFactory.decodeResource(resources, it, small) }
-                    choice == Bing.CHOICE -> BitmapFactory.decodeFile(Bing.file(this@MainActivity).path, small)
                     choice == ShowsWall.CHOICE -> BitmapFactory.decodeFile(ShowsWall.file(this@MainActivity).path, small)
                     choice.startsWith("file:") -> BitmapFactory.decodeFile(File(wallpaperDir(), choice.removePrefix("file:")).path, small)
-                    choice.startsWith("pack:") -> BitmapFactory.decodeFile(File(packDir(), choice.removePrefix("pack:")).path, small)
                     choice.startsWith("video:") -> File(wallpaperDir(), choice.removePrefix("video:")).takeIf { it.isFile }?.let { videoPoster(it) }?.let { p ->
                         val w = if (big) 480 else 160
                         Bitmap.createScaledBitmap(p, w, maxOf(1, w * p.height / p.width), true).also { if (it !== p) p.recycle() }
@@ -6159,12 +6146,8 @@ class MainActivity : Activity() {
             "Mist (day)" to R.string.wp_mist_day, "Peak (dusk)" to R.string.wp_peak_dusk,
             "Pure black" to R.string.wp_pure_black, "Soft white" to R.string.wp_soft_white,
         )
-        /** By pack photo name: a 1080p copy ships in the app, and the 4K pack photo of that name replaces it once downloaded. */
-        val BUNDLED_WALLPAPERS = mapOf("Arctic Aurora" to R.drawable.wallpaper_aurora)
-        const val FIRST_WALLPAPER = "res:Arctic Aurora"
-        // ponytail: pinned to today's blob; if the photo changes on main the fetch fails and the 1080p copy stays.
-        val FIRST_WALLPAPER_4K = PackPhoto("05_Arctic_Aurora.webp", 1_145_394, "fb288f54f21328355cf2d2c0cb23148069888628")
-        const val PACK_URL = "https://raw.githubusercontent.com/cxy12193890/GrowQuizLauncher-CN/main/wallpapers/"
+        val BUNDLED_WALLPAPERS = emptyMap<String, Int>()
+        const val FIRST_WALLPAPER = "plain:Soft white"
         val PIN_KEYS = setOf(
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER,
