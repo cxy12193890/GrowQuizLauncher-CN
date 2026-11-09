@@ -191,7 +191,7 @@
     <string name="update_download_failed">无法下载更新。请检查网络后重试。</string>
     <string name="update_install_failed">更新安装失败</string>
     <string name="city_hint">输入城市名，然后搜索</string>
-    <string name="automatic_ip">自动（根据你的网络地址判断）</string>
+    <string name="automatic_ip">不使用定位（天气暂停）</string>
     <string name="weather_location">位置</string>
     <string name="searching">正在搜索…</string>
     <string name="search_failed">无法搜索。请检查网络后重试。</string>
