@@ -1,29 +1,9 @@
 # Wallpapers
 
-The collection contains ten 3840 × 2160 WebP files, totalling 14,876,034 bytes (14.9 MB).
-The repository contains these files, but the current repository history does not include source records or a separate commercial-use license. Do not include this pack in a paid release until the rights holder and commercial redistribution permission are documented. No wallpaper image ships inside the APK.
-TVQuizLock stores the 4K files but currently renders still wallpapers at 1920 × 1080 to limit memory use.
+Commercial-branch status: **disabled pending rights verification**.
 
-## Publish a new wallpaper
+No third-party wallpaper files are shipped or offered for download in this branch. The previous pack had no source records or commercial redistribution licence, so its image files were removed from `commercial-dev`.
 
-1. Add a `.webp` file to this directory on `main` in this repository.
-2. Use letters, numbers, underscores, or hyphens in the filename. Start with a letter or number.
-3. Keep the same filename when you replace an existing wallpaper.
+Parents can still use photos and videos they own or have permission to use through the local upload and folder-selection features.
 
-Names come from filenames. For example, `11_Future_Sunset.webp` appears as **Future Sunset**.
-Each file must stay below 50 MB. The current directory API supports fewer than 1,000 entries.
-No app catalogue edit, generated index, or app release is needed for later uploads.
-
-## On the TV
-
-Open **电视答题锁设置 → 壁纸 → 内置壁纸**. TVQuizLock checks this repository's GitHub directory when this screen opens.
-It lists new photos and automatically updates photos already downloaded, using GitHub content hashes.
-Select a new photo to download and use it. **More photos** downloads all missing photos.
-
-Each download replaces only its own file after size, content hash, and WebP header checks pass.
-A failed download keeps the previous file. Unchanged files do not download again.
-TVQuizLock keeps other downloaded wallpapers, including files no longer listed on GitHub.
-Saved selections use filenames, so replacing a file keeps its selection.
-
-If GitHub is unavailable, downloaded wallpapers remain available.
-Users need the app version that includes this feature once. Later wallpaper changes need no app update.
+Do not add a wallpaper to this branch unless its creator, source, licence, commercial-use scope and redistribution permission are recorded and independently checked.
