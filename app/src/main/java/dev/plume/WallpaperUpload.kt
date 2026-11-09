@@ -49,6 +49,7 @@ internal class UploadServer(context: Context, ip: String, val code: String, priv
             client = s
             try {
                 if (socket.isClosed) s.close()
+                s.soTimeout = 30_000
                 (s as SSLSocket).startHandshake()
                 s.use { handle(it) }
             } catch (e: Exception) {
