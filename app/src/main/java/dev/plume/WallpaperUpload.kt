@@ -12,8 +12,11 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
-import java.net.ServerSocket
 import java.net.Socket
+import javax.net.ssl.SSLServerSocket
+import javax.net.ssl.SSLSocket
+import android.content.Context
+import dev.plume.web.WebAdminServer
 
 /**
  * A one-page web server for adding wallpapers from a phone. It only runs while the upload panel is open,
@@ -21,11 +24,11 @@ import java.net.Socket
  * The page sends the photo as the raw request body, so there's no multipart parsing.
  * [onUpload] runs on the server thread with the uploaded file and whether it is a video, and returns the new wallpaper's name, or null.
  */
-internal class UploadServer(val code: String, private val temp: File, private val onUpload: (File, Boolean) -> String?) {
-    private val socket = try {
-        ServerSocket(8080)
-    } catch (e: IOException) {
-        ServerSocket(0) // 8080 taken: any free port (it's in the QR code either way)
+internal class UploadServer(context: Context, ip: String, val code: String, private val temp: File, private val onUpload: (File, Boolean) -> String?) {
+    private val socket: SSLServerSocket = try {
+        WebAdminServer.createTlsServerSocket(context, ip, 8080)
+    } catch (e: Exception) {
+        throw IOException("Secure upload server could not start", e)
     }
     val port get() = socket.localPort
     @Volatile private var client: Socket? = null
@@ -46,6 +49,7 @@ internal class UploadServer(val code: String, private val temp: File, private va
             client = s
             try {
                 if (socket.isClosed) s.close()
+                (s as SSLSocket).startHandshake()
                 s.use { handle(it) }
             } catch (e: Exception) {
                 android.util.Log.w("Plume", "upload request failed ($e)")
@@ -120,7 +124,7 @@ internal class UploadServer(val code: String, private val temp: File, private va
         val PAGE = """
             <!doctype html>
             <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>Plume wallpaper</title>
+            <title>TVQuizLock wallpaper</title>
             <style>
               body{font:17px system-ui,sans-serif;margin:0;padding:32px 20px;background:#f7f8fa;color:#111214}
               @media (prefers-color-scheme:dark){body{background:#09090b;color:#f5f5f7}}
@@ -130,7 +134,7 @@ internal class UploadServer(val code: String, private val temp: File, private va
               @media (prefers-color-scheme:dark){button{background:#f5f5f7;color:#111214}}
               button:disabled{opacity:.35} input{display:none} #s{min-height:1.5em}
             </style></head><body>
-            <h1>Add a wallpaper</h1>
+            <h1>TVQuizLock · 添加壁纸</h1>
             <p>Pick a photo, or an H.264 or HEVC MP4 video up to 1080p and 350 MB. A photo shows on your TV a moment after you upload it; a video plays there first.</p>
             <label><input id="f" type="file" accept="image/*,video/mp4"><span id="n">Choose photo or video</span></label>
             <button id="b" disabled>Upload to TV</button>
