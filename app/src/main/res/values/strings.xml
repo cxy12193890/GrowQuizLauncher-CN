@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">电视答题锁</string>
     <string name="quiz_settings">儿童定时问答</string>
-    <string name="quiz_settings_help">选择儿童年龄和答题间隔。每个年龄含 300 道离线题，支持设备所有者锁定模式。</string>
+    <string name="quiz_settings_help">选择儿童年龄和答题间隔。每个年龄含 3000 道离线题，支持设备所有者锁定模式。</string>
     <string name="web_admin">后台管理</string>
     <string name="web_admin_help">点击弹出连接提示：让手机连接与电视相同的 Wi-Fi，用手机浏览器打开提示中的地址，即可远程修改年龄、答题间隔和立即开始答题。</string>
     <string name="row_empty_hint">桌面还没有应用 · 打开顶部“所有应用”，长按 OK 键即可添加</string>
