@@ -115,8 +115,9 @@ object WebAdminServer {
         return if (context != null && !hasPassword(context)) "$base/?setup=$setupToken" else base
     }
 
-    fun certificateFingerprint(context: Context): String? = runCatching {
-        val ip = localIpAddress() ?: return null
+    fun certificateFingerprint(context: Context): String? = localIpAddress()?.let { certificateFingerprint(context, it) }
+
+    fun certificateFingerprint(context: Context, ip: String): String? = runCatching {
         val safe = ip.replace(':', '_').replace('%', '_')
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val password = prefs.getString("tls_password_$safe", null) ?: return null
@@ -535,7 +536,8 @@ object WebAdminServer {
                 if (!verifyPassword(context, old)) return reply(out, 403, "application/json; charset=utf-8", error("wrong password"))
                 if (fresh.length < MIN_PASSWORD) return reply(out, 400, "application/json; charset=utf-8", error("password too short"))
                 storePassword(context, fresh)
-                reply(out, 200, "application/json; charset=utf-8", ok())
+                sessions.clear()
+                reply(out, 200, "application/json; charset=utf-8", ok(), cookie = sessionCookie(newSession()))
             }
 
             path == "/api/settings" && method == "POST" -> {
