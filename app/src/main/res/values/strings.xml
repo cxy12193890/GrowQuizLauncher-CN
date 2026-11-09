@@ -373,7 +373,7 @@
     <string name="help_show_row">“按向下键时”会在你按下遥控器向下键之前隐藏该行。</string>
     <string name="help_weather">在时钟下方显示天气。</string>
     <string name="help_units">摄氏或华氏。</string>
-    <string name="help_screensaver_pick">画作、航拍风景、你的照片，或电视自带的屏保。</string>
+    <string name="help_screensaver_pick">选择你自己的照片作为屏保，也可以继续使用电视原有的屏保。</string>
     <string name="help_preview">立即启动屏保。按任意键停止。</string>
     <string name="help_photo_every">下一张图片出现的频率。</string>
     <string name="help_add_from_phone">用手机扫描二维码，然后发送照片或视频。</string>
