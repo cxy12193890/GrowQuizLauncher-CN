@@ -23,15 +23,9 @@ class WallpaperPackTest {
         try { test(dir) } finally { dir.deleteRecursively() }
     }
 
-    @Test fun everyDownloadHasADistinctWebpAsset() {
-        val files = File(root, "wallpapers").listFiles()!!.filter { it.extension == "webp" }
-        assertTrue(files.isNotEmpty())
-        assertEquals(files.size, files.map { it.name }.toSet().size)
-        for (file in files) {
-            assertTrue(packFileName(file.name))
-            val header = file.inputStream().use { it.readNBytes(12) }.toString(Charsets.US_ASCII)
-            assertTrue("Invalid WebP: ${file.name}", header.startsWith("RIFF") && header.endsWith("WEBP"))
-        }
+    @Test fun commercialBranchDoesNotShipUnverifiedWallpaperPack() {
+        val files = File(root, "wallpapers").listFiles()?.filter { it.extension == "webp" }.orEmpty()
+        assertTrue("Unverified third-party wallpaper files must not ship", files.isEmpty())
     }
 
     @Test fun installedAssetMatchesItsGitBlobId() = inDirectory { dir ->
