@@ -65,6 +65,8 @@ android {
     packaging {
         resources {
             excludes += setOf("kotlin/**", "**/*.kotlin_builtins", "META-INF/*.kotlin_module", "META-INF/*.version", "DebugProbesKt.bin")
+            // Keep the license texts from all Bouncy Castle modules in the APK instead of dropping duplicates.
+            merges += "META-INF/LICENSE.md"
         }
     }
 
