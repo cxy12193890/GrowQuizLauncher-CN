@@ -42,6 +42,16 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Speech engines. Android 11 and later hide other packages from a query unless they are
+             declared here, and TextToSpeech lists engines with exactly these two intents: without
+             them the list comes back empty on a set that has an engine, and the engine cannot be
+             started either. Every report so far shows an empty list. -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.tts.engine.CHECK_TTS_DATA" />
+        </intent>
         <package android:name="com.google.android.apps.tv.launcherx" />
         <!-- Fire OS's input switch, for the HDMI tiles (Remap.openInput) -->
         <package android:name="com.amazon.tv.inputpreference.service" />

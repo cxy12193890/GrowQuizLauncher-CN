@@ -34,8 +34,13 @@ object QuizScheduler {
         if (exactAllowed) {
             alarm.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showIntent), op)
         } else {
-            // Fallback to an inexact alarm when the exact-alarm permission is unavailable.
-            dev.plume.DiagLog.event("exact_alarm_denied")
+            // Fallback to an inexact alarm when the exact-alarm permission is unavailable. Android 14
+            // denies it to a fresh install until the parents allow "alarms and reminders", so the
+            // event carries the level: a denial on 34 is the platform default, not a broken firmware.
+            dev.plume.DiagLog.event(
+                "exact_alarm_denied", "fallback=inexact",
+                mapOf("sdk" to Build.VERSION.SDK_INT.toString()),
+            )
             alarm.set(AlarmManager.RTC_WAKEUP, triggerAt, op)
         }
         prefs.nextTriggerAt = triggerAt

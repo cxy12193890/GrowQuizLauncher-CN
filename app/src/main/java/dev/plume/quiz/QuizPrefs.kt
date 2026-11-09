@@ -102,6 +102,11 @@ class QuizPrefs(context: Context) {
         get() = prefs.getBoolean(KEY_OVERLAY_ASKED, false)
         set(value) = prefs.edit().putBoolean(KEY_OVERLAY_ASKED, value).apply()
 
+    /** The "let alarms run exactly" request was shown once (Android 12+ report data showed it widely denied). */
+    var exactAsked: Boolean
+        get() = prefs.getBoolean(KEY_EXACT_ASKED, false)
+        set(value) = prefs.edit().putBoolean(KEY_EXACT_ASKED, value).apply()
+
     /**
      * The boot session (Settings.Global.BOOT_COUNT) in which the parents already dismissed the startup
      * admin prompt. -1 means it has never been shown. A reboot raises the boot count, so the prompt comes
@@ -151,6 +156,7 @@ class QuizPrefs(context: Context) {
         private const val KEY_VERIFY_PENDING = "verify_pending"
         private const val KEY_QUIZ_ACTIVE = "quiz_active"
         private const val KEY_OVERLAY_ASKED = "overlay_asked"
+        private const val KEY_EXACT_ASKED = "exact_alarm_asked"
         private const val KEY_PROMPT_BOOT = "prompt_boot_count"
     }
 }

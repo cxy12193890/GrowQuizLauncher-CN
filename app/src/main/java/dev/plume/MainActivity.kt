@@ -555,6 +555,17 @@ class MainActivity : Activity() {
                 toast("请在「设置 → 应用 → 特殊权限」里允许「显示在其他应用上层」，否则切走后答题页回不来", long = true, system = true)
             }
         }
+        // GrowQuiz: the first day of reports showed nearly every Android 12+ TV with the exact-alarm
+        // grant denied, which pushes the quiz time by minutes. Same shape as the overlay note above:
+        // say it once, never jump to Settings on our own.
+        if (Build.VERSION.SDK_INT >= 31 &&
+            getSystemService(android.app.AlarmManager::class.java)?.canScheduleExactAlarms() == false
+        ) {
+            if (!quizPrefs.exactAsked) {
+                quizPrefs.exactAsked = true
+                toast("请在系统「设置 → 应用 → 特殊权限」里允许「闹钟和提醒」，否则答题时间可能被系统推迟", long = true, system = true)
+            }
+        }
         homeSetupResumed()
         // Back from a screen that settings opened: settings again, on the same row (and the Home switch as it is now).
         val back = prefs.getInt("return_settings", 0)

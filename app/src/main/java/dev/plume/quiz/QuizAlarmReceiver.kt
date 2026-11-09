@@ -10,6 +10,9 @@ class QuizAlarmReceiver : BroadcastReceiver() {
         if (!QuizPrefs(context).enabled) return
         // Schedule first so an unanswered or interrupted quiz never disables future sessions.
         QuizScheduler.reschedule(context)
+        // GrowQuiz: the alarm wakes this process anyway, so a TV nobody opens still reports on
+        // schedule — day-one data showed most devices only ever started once.
+        dev.plume.ReportUpload.maybeUpload(context)
         // GrowQuiz: the report pairs this event with QuizActivity's quiz_open; an alarm_fired with
         // no quiz_open soon after means the firmware swallowed the start (background-start rules).
         DiagLog.event("alarm_fired")

@@ -25,12 +25,17 @@ object QuizVoice {
     fun warm(context: Context) {
         if (engine != null || starting) return
         starting = true
-        engine = TextToSpeech(context.applicationContext) { status ->
+        val app = context.applicationContext
+        engine = TextToSpeech(app) { status ->
             starting = false
             if (status != TextToSpeech.SUCCESS) {
-                android.util.Log.w("GrowQuiz", "tts init failed: $status")
+                // Most TVs here have no engine at all, and the constructor answers the same -1 for
+                // that as for an engine that is installed but will not start. The list of engines
+                // on board tells the two apart; see TtsDiagnosis.
+                val engines = TtsDiagnosis.names(TtsProbe.engineNames(app))
+                android.util.Log.w("GrowQuiz", "tts init failed: $status engines=${engines.joinToString(",")}")
                 failure = "no-engine"
-                dev.plume.DiagLog.event("tts_init_fail", "status=$status")
+                dev.plume.DiagLog.event(TtsDiagnosis.typeFor(engines), TtsDiagnosis.msg(status, engines))
                 return@TextToSpeech
             }
             configure()

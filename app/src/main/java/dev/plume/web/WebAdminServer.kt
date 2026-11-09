@@ -325,6 +325,11 @@ object WebAdminServer {
                         .put("snapOkCount", prefs.snapOkCount)
                         .put("overlay", android.provider.Settings.canDrawOverlays(context))
                         .put("a11y", dev.plume.HomeOverride.running != null)
+                        // GrowQuiz: day-one reports showed nearly every Android 12+ TV without the
+                        // exact-alarm grant, and most TVs with the home service never switched on.
+                        // The console needs both facts apart from "bound right now".
+                        .put("a11yEnabled", dev.plume.DeviceProbe.a11yEnabled(context))
+                        .put("exactAlarm", dev.plume.DeviceProbe.exactAlarm(context))
                         .put("thinkSeconds", prefs.thinkSeconds)
                         .put("wrongStreak", prefs.wrongStreak)
                         .put("restUntil", prefs.restUntil)
