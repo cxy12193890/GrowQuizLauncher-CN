@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true" />
+    <base-config cleartextTrafficPermitted="false" />
     <!-- Apple's aerial CDN uses a root certificate that this Android TV does not include. -->
     <domain-config>
         <domain includeSubdomains="false">sylvan.apple.com</domain>
