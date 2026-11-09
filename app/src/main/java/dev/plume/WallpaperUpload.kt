@@ -26,7 +26,8 @@ import dev.plume.web.WebAdminServer
  */
 internal class UploadServer(context: Context, ip: String, val code: String, private val temp: File, private val onUpload: (File, Boolean) -> String?) {
     private val socket: SSLServerSocket = try {
-        WebAdminServer.createTlsServerSocket(context, ip, 8080)
+        try { WebAdminServer.createTlsServerSocket(context, ip, 8080) }
+        catch (_: java.net.BindException) { WebAdminServer.createTlsServerSocket(context, ip, 0) }
     } catch (e: Exception) {
         throw IOException("Secure upload server could not start", e)
     }
