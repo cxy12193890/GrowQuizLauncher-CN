@@ -87,9 +87,9 @@
 **方式二：自行构建**
 
 ```sh
-git clone https://github.com/cxy12193890/GrowQuizLauncher-CN.git
+git clone -b commercial-dev --single-branch https://github.com/cxy12193890/GrowQuizLauncher-CN.git
 cd GrowQuizLauncher-CN
-./gradlew assembleRelease
+./gradlew assembleDebug
 # 产物：app/build/outputs/apk/debug/app-debug.apk（测试构建）
 ```
 
@@ -421,7 +421,7 @@ tools/                               # 安装脚本、题库生成、上游设�
 
 ## 隐私
 
-没有账号、没有广告。应用只在以下情况使用网络：每日向本项目 GitHub Releases API 检查版本；加载继续观看的海报；用户主动选择在线壁纸、屏保或天气。管理台只在局域网监听，密码与设置保存在电视本地。
+没有账号、没有广告。应用只在以下情况使用网络：每日向本项目 GitHub Releases API 检查版本；家长主动开启天气并设置位置后访问 Open-Meteo；手机与电视在同一局域网内通过 TLS 传输家长主动上传的照片或视频。继续观看海报由本机电视内容提供程序提供。管理台只在局域网监听，密码与设置保存在电视本地。
 
 本应用已移除自动兼容性报告上传。崩溃记录、诊断事件与本机权限状态只保存在电视应用私有存储，不上传到开发者服务器。照片或视频通过管理页添加时，手机与电视在同一 Wi-Fi 内直接传输。
 
@@ -441,12 +441,12 @@ tools/                               # 安装脚本、题库生成、上游设�
 
 - 本项目基于 [Plume Launcher](https://github.com/aradhyas8/Plume_Launcher)（作者 aradhyas8）二次开发，上游评估提交 `e7e663ba85a5028e29206ad9a67ad248c500042d`，遵循 **GPL-3.0** 发布，完整许可见 [LICENSE](LICENSE)。任何分发版本（含修改版）都必须同样以 GPL-3.0 开源并提供完整源码。
 - 上游的完整功能说明、安装细节与隐私条目已归档在 [docs/UPSTREAM-PLUME.md](docs/UPSTREAM-PLUME.md)。
-- 屏保油画（公有领域）、壁纸包、Aerial 场景与图标来源见上游文档的 Credits 一节。
+- 第三方组件与素材许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)；未核实商业授权的第三方壁纸、画作、视频目录和字体文件已从商业分支移除。
 
 
 ## 隐私与发行说明
 
 - 已移除自动设备兼容报告上传。崩溃记录和诊断事件仅保存在电视本机，不会发送到开发者服务器。
 - 应用更新只查询本项目 GitHub Releases API，并从本项目 Release 资产下载 APK；不再访问原作者的更新服务器。
-- 本项目是基于 Plume Launcher 的 GPL-3.0 二次开发。分发修改版时必须遵守 GPL-3.0，并提供对应完整源码。题库和部分壁纸素材的商业授权尚未确认，发行状态见 [docs/ASSET-LICENSE-REVIEW.md](docs/ASSET-LICENSE-REVIEW.md)。
-- 题库与部分壁纸素材的商业授权仍在核验中；在授权清单标记为通过前，不得发布收费正式版。
+- 本项目是基于 Plume Launcher 的 GPL-3.0 二次开发。分发修改版时必须遵守 GPL-3.0，并提供对应完整源码。33,000 条题库尚未取得完整来源及商业授权证明，发行状态见 [docs/ASSET-LICENSE-REVIEW.md](docs/ASSET-LICENSE-REVIEW.md)。
+- 题库来源与商业授权、第三方图标实际文件版本仍待核实；未完成前不得发布收费正式版。未获授权的壁纸、画作、视频和字体素材已从商业分支移除。
