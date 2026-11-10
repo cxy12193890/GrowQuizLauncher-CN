@@ -18,7 +18,7 @@ keytool -help
 keytool -genkeypair -v -storetype PKCS12 -keystore "$PWD\tvquizlock-release.keystore" -alias tvquizlock -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=TVQuizLock Release, OU=Release, O=TVQuizLock, L=Unknown, ST=Unknown, C=CN"
 ```
 
-- 按提示设置足够强的 keystore 密码和私钥密码，建议至少 16 位。
+- PKCS12 格式要求密钥条目密码与 keystore 密码相同；设置一个足够强的密码（建议至少 16 位），后续 GitHub Secrets 中的 `ANDROID_KEYSTORE_PASSWORD` 与 `ANDROID_KEY_PASSWORD` 填写同一个值。
 - 记住密钥别名：`tvquizlock`。
 - 不要把密码写进命令、聊天记录、公开文件或 Git 提交。
 
