@@ -34,13 +34,28 @@ jobs:
       - name: Prepare optional fixed signing key
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+          PRESENT=0
+          MISSING=0
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -n "${!name}" ]; then
+              PRESENT=1
+            else
+              MISSING=1
+            fi
+          done
+          if [ "$PRESENT" -eq 0 ]; then
+            echo "::notice::No fixed signing key configured; the debug APK will be signed for testing and the release APK will be unsigned."
+          elif [ "$MISSING" -ne 0 ]; then
+            echo "::error::Incomplete release signing secrets. Configure all four secrets or leave all four empty."
+            exit 1
+          else
             echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/tvquizlock-release.keystore"
             test -s "$RUNNER_TEMP/tvquizlock-release.keystore"
             echo "Fixed signing key is available."
-          else
-            echo "::notice::No fixed signing key configured; the debug APK will be signed for testing and the release APK will be unsigned."
           fi
 
       - name: Run tests, lint and build debug plus release APKs
