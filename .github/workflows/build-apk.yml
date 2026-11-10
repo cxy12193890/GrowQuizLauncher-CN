@@ -68,6 +68,39 @@ jobs:
           chmod +x ./gradlew
           ./gradlew --no-daemon testDebugUnitTest lintRelease assembleDebug assembleRelease
 
+      - name: Verify fixed release APK signature
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/tvquizlock-release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ ! -s "$ANDROID_KEYSTORE_PATH" ]; then
+            echo "::notice::No fixed signing key configured; skipping certificate identity verification for this unsigned release build."
+            exit 0
+          fi
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          if [ -z "$APK" ]; then
+            echo "::error::Release APK not found."
+            exit 1
+          fi
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
+          if [ -z "$APKSIGNER" ] || [ ! -x "$APKSIGNER" ]; then
+            echo "::error::Android apksigner tool not found."
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose "$APK"
+          APK_CERT_SHA256="$("$APKSIGNER" verify --print-certs "$APK" | sed -nE 's/.*certificate SHA-256 digest: *//p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          KEY_CERT_SHA256="$(keytool -list -v -storetype PKCS12 -keystore "$ANDROID_KEYSTORE_PATH" -alias "$ANDROID_KEY_ALIAS" -storepass "$ANDROID_KEYSTORE_PASSWORD" 2>/dev/null | sed -nE 's/^[[:space:]]*SHA256: *//p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          if [ -z "$APK_CERT_SHA256" ] || [ -z "$KEY_CERT_SHA256" ]; then
+            echo "::error::Unable to read APK or keystore certificate SHA-256 fingerprint."
+            exit 1
+          fi
+          if [ "$APK_CERT_SHA256" != "$KEY_CERT_SHA256" ]; then
+            echo "::error::Release APK certificate does not match the fixed TVQuizLock signing key."
+            exit 1
+          fi
+          echo "Release APK signature verified. Certificate SHA-256: $APK_CERT_SHA256"
+
       - name: Upload test and release APKs
         uses: actions/upload-artifact@v5
         with:
