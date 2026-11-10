@@ -31,8 +31,8 @@ jobs:
             exit 1
           fi
           VERSION="${GITHUB_REF_NAME#v}"
-          APP_ID="$(sed -nE 's/^[[:space:]]*applicationId = "([^"]+)".*/\\1/p' app/build.gradle.kts | head -n 1)"
-          APP_VERSION="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\\1/p' app/build.gradle.kts | head -n 1)"
+          APP_ID="$(sed -nE 's/^[[:space:]]*applicationId = "([^"]+)".*/\1/p' app/build.gradle.kts | head -n 1)"
+          APP_VERSION="$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' app/build.gradle.kts | head -n 1)"
           if [ "$APP_ID" != "com.tvquizlock.app" ]; then
             echo "::error::Unexpected Android applicationId: $APP_ID"
             exit 1
