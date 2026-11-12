@@ -15,6 +15,11 @@ Write every entry in ASD-STE100 Simplified Technical English:
 Put changes that are not released under `## Unreleased`. Rename that heading to the version number when you release.
 
 
+## 1.15.2
+
+- Fix HTTPS certificate signing for the parent console on Android TV.
+- Show the parent console QR code after the HTTPS service starts.
+
 ## 1.15.1
 - **手机管理连接加密。** 管理页面和照片上传页面都使用 TLS。
 - **首次设置需要电视授权。** 只有扫描电视显示的一次性二维码，才能创建管理密码。
