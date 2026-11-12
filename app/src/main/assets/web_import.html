@@ -12,7 +12,7 @@
     .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
     h2{font-size:18px;margin:0 0 14px}h3{font-size:15px;margin:18px 0 8px}.muted{color:var(--muted)}
     label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
-    input,select,button{width:100%;padding:14px 14px;border-radius:12px;border:1px solid var(--line);background:#0b1730;color:var(--text);font:inherit;outline:none}
+    input,select,button,textarea{width:100%;padding:14px 14px;border-radius:12px;border:1px solid var(--line);background:#0b1730;color:var(--text);font:inherit;outline:none}
     input:focus,select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,209,102,.15)}
     input[type=file]{padding:12px 14px}
     .field{margin-bottom:14px}
@@ -42,8 +42,8 @@
   <div class="wrap">
     <div class="brand">
       <div>
-        <h1>批量导入题库</h1>
-        <p>用 AI 批量生成题目文件，上传即可入库 · <a class="link" href="/">← 返回控制台</a></p>
+        <h1>上传题目</h1>
+        <p><a class="link" href="/">← 返回控制台</a></p>
       </div>
     </div>
 
@@ -55,6 +55,38 @@
 
     <div id="main" class="hidden">
 
+      <section class="card" aria-label="上传题目">
+        <div class="field">
+          <div style="display:flex;gap:8px">
+            <button type="button" id="takePhoto" class="ghost">拍照</button>
+            <button type="button" id="choosePhoto" class="ghost">选图片</button>
+          </div>
+          <input id="cameraFile" type="file" accept="image/*" capture="environment" hidden>
+          <input id="photoFile" type="file" accept="image/*" hidden>
+        </div>
+        <div class="field">
+          <label for="questionText">粘贴豆包题目或编辑识别文字</label>
+          <textarea id="questionText" rows="5" maxlength="80000" placeholder="可直接粘贴题干、A–D 选项及答案"></textarea>
+          <button type="button" id="copyDoubao" class="ghost" style="margin-top:8px">复制豆包出题指令</button>
+        </div>
+        <details class="field">
+          <summary>题目分类 <span id="classification" class="muted"></span></summary>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px">
+            <label>年级<select id="uploadGrade"></select></label>
+            <label>册别<select id="uploadTerm"><option value="0">不限</option><option value="1">上册</option><option value="2">下册</option></select></label>
+            <label>科目<input id="uploadSubject" list="subjects" maxlength="40" placeholder="例如数学"></label>
+            <datalist id="subjects"><option>数学</option><option>语文</option><option>英语</option><option>科学</option><option>道德与法治</option><option>历史</option><option>地理</option><option>物理</option><option>化学</option><option>生物</option></datalist>
+            <label>难度<select id="uploadDifficulty"></select></label>
+          </div>
+        </details>
+        <button type="button" id="previewQuestions" class="primary">预览题目</button>
+        <div id="photoMessage" class="msg" role="status" aria-live="polite"></div>
+        <div id="questionPreview"></div>
+        <button type="button" id="saveQuestions" class="primary hidden">加入电视题库</button>
+      </section>
+
+      <details class="card">
+        <summary>高级导入（JSON 文件）</summary>
       <div class="card">
         <h2>📖 AI 批量生成题库教程</h2>
         <div class="step">
@@ -165,9 +197,11 @@
         <div class="footer">导入成功后回到「题库管理」点「刷新列表」即可看到新题。</div>
       </div>
 
+      </details>
     </div>
   </div>
 
+  <script src="/question_upload.js"></script>
   <script>
     const $ = id => document.getElementById(id);
     const msg = (el, text, ok) => { el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); };
@@ -178,6 +212,7 @@
         const r = await fetch('/api/status', { credentials: 'same-origin' });
         const s = await r.json();
         if (!s.authenticated) { $('gate').classList.remove('hidden'); return; }
+        initQuestionUpload(s);
         $('main').classList.remove('hidden');
       } catch (e) {
         $('gate').classList.remove('hidden');

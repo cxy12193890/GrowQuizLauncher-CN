@@ -2,6 +2,13 @@ package dev.plume.web
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
+import android.util.Base64
+import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
+import java.util.concurrent.TimeUnit
 import android.os.Handler
 import android.os.Looper
 import dev.plume.quiz.QuestionBank
@@ -60,6 +67,7 @@ object WebAdminServer {
     private const val LOGIN_BLOCK_MS = 15L * 60 * 1000
     private const val LOGIN_MAX_FAILURES = 5
     private const val MAX_BODY = 64L * 1024
+    private const val MAX_PHOTO_BODY = 3L * 1024 * 1024
     private const val MAX_IMPORT_BODY = 8L * 1024 * 1024
     private const val MAX_IMPORT_QUESTIONS = 5000
     private const val MAX_IMPORT_ERRORS = 20
@@ -355,7 +363,11 @@ object WebAdminServer {
             headers[key] = value
         }
         // Question bank imports carry whole files, so they get a much larger body budget.
-        val bodyLimit = if (path == "/api/questions/import") MAX_IMPORT_BODY else MAX_BODY
+        val bodyLimit = when (path) {
+            "/api/questions/import" -> MAX_IMPORT_BODY
+            "/api/questions/photo" -> MAX_PHOTO_BODY
+            else -> MAX_BODY
+        }
         val body = if (method == "POST") readBody(input, headers["content-length"]?.toLongOrNull() ?: 0L, bodyLimit) else ""
 
         when {
@@ -372,6 +384,23 @@ object WebAdminServer {
             path == "/import" && method == "GET" -> {
                 val page = context.assets.open("web_import.html").use { it.readBytes() }.toString(Charsets.UTF_8)
                 reply(out, 200, "text/html; charset=utf-8", page)
+            }
+
+            path == "/question_upload.js" && method == "GET" -> {
+                val script = context.assets.open("question_upload.js").bufferedReader().use { it.readText() }
+                reply(out, 200, "text/javascript; charset=utf-8", script)
+            }
+
+            path == "/api/questions/photo" && method == "POST" -> {
+                val type = "application/json; charset=utf-8"
+                if (!valid(cookie(headers))) return reply(out, 401, type, error("请重新登录家长控制台"))
+                if (body.isEmpty()) return reply(out, 400, type, error("照片为空或太大，请裁剪后重试"))
+                val recognized = try {
+                    recognizeQuestions(body)
+                } catch (_: Exception) {
+                    return reply(out, 400, type, error("无法识别照片，请换一张清晰的图片，或粘贴题目文字"))
+                }
+                reply(out, 200, type, JSONObject().put("text", recognized).toString())
             }
 
             // The standalone learning report; the page itself asks /api/stats and sends the visitor
@@ -895,6 +924,21 @@ object WebAdminServer {
      * Field-level check of one imported question; returns a parent-readable Chinese reason on
      * failure, null when the row is clean. Mirrors [QuestionBank]'s own validation.
      */
+    private fun recognizeQuestions(body: String): String {
+        val bytes = Base64.decode(body, Base64.NO_WRAP)
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        require(bounds.outWidth in 1..2200 && bounds.outHeight in 1..2200)
+        val bitmap = requireNotNull(BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
+        val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
+        try {
+            val result = recognizer.process(InputImage.fromBitmap(bitmap, 0))
+            return Tasks.await(result, 20, TimeUnit.SECONDS).text
+        } finally {
+            recognizer.close()
+        }
+    }
+
     private fun validateImport(item: JSONObject): String? {
         if (item.has("term") && item.optInt("term", -1) !in 0..2) return "term 必须是 0（未标注）、1（上册）或 2（下册）"
         if (item.optInt("term", 0) != 0 && item.optInt("grade", 0) == 0) return "指定上下册时必须填写年级"

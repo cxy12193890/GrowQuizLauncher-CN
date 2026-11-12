@@ -15,6 +15,10 @@ Write every entry in ASD-STE100 Simplified Technical English:
 Put changes that are not released under `## Unreleased`. Rename that heading to the version number when you release.
 
 
+## 1.15.5
+
+- 家长可拍照、选图或粘贴题目，核对答案后追加到电视题库。
+
 ## 1.15.4
 
 - Filter imported questions by textbook volume.
