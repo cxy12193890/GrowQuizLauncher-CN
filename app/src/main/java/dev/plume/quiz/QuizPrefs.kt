@@ -141,13 +141,28 @@ class QuizPrefs(context: Context) {
             .commit()
     }
 
-    fun save(age: Int, interval: Int, enabled: Boolean, categories: Set<String> = this.categories, voice: Boolean = this.voice) {
+    var completedSessionQuestions: Set<String>
+        get() = prefs.getStringSet("completed_session_questions", emptySet()).orEmpty().toSet()
+        set(value) = prefs.edit().putStringSet("completed_session_questions", value.toSet()).apply()
+
+    val grade: Int get() = prefs.getInt("grade", 0).coerceIn(0, 10)
+    val difficulty: Int get() = prefs.getInt("difficulty", 0).coerceIn(0, 5)
+    val questionsPerSession: Int get() = prefs.getInt("questions_per_session", 1).coerceIn(1, 10)
+
+    fun save(
+        age: Int, interval: Int, enabled: Boolean,
+        categories: Set<String> = this.categories, voice: Boolean = this.voice,
+        grade: Int = this.grade, difficulty: Int = this.difficulty, questionsPerSession: Int = this.questionsPerSession,
+    ) {
         prefs.edit()
             .putInt(KEY_AGE, age.coerceIn(5, 15))
             .putInt(KEY_INTERVAL, interval.coerceIn(1, 1440))
             .putBoolean(KEY_ENABLED, enabled)
             .putStringSet(KEY_CATEGORIES, categories)
             .putBoolean(KEY_VOICE, voice)
+            .putInt("grade", grade)
+            .putInt("difficulty", difficulty)
+            .putInt("questions_per_session", questionsPerSession)
             .commit()
     }
 

@@ -15,6 +15,11 @@ Write every entry in ASD-STE100 Simplified Technical English:
 Put changes that are not released under `## Unreleased`. Rename that heading to the version number when you release.
 
 
+## 1.15.3
+
+- Select a school grade and difficulty for tagged questions.
+- Set the number of correct answers required to finish a quiz.
+
 ## 1.15.2
 
 - Fix HTTPS certificate signing for the parent console on Android TV.

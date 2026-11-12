@@ -164,6 +164,8 @@ class QuestionBank(private val context: Context) {
         val options: List<String>,
         val answerIndex: Int,
         val explanation: String,
+        val grade: Int = 0,
+        val difficulty: Int = 0,
     )
 
     /** Bulk import outcome: [imported] new questions, [skipped] duplicates. */
@@ -186,7 +188,7 @@ class QuestionBank(private val context: Context) {
             if (!seen.add(dupKey(draft.age, draft.category.trim(), draft.prompt.trim()))) continue
             val id = "u-" + java.lang.Long.toHexString(System.currentTimeMillis()) + "-" +
                 java.lang.Integer.toHexString(Random.nextInt()) + "-" + imported
-            custom += Question(id, draft.age, draft.category.trim(), draft.prompt.trim(), draft.options.map { it.trim() }, draft.answerIndex, draft.explanation.trim(), custom = true)
+            custom += Question(id, draft.age, draft.category.trim(), draft.prompt.trim(), draft.options.map { it.trim() }, draft.answerIndex, draft.explanation.trim(), custom = true, grade = draft.grade, difficulty = draft.difficulty)
             imported++
         }
         if (replace) {
@@ -215,7 +217,8 @@ class QuestionBank(private val context: Context) {
         val custom = loadCustom().toMutableList()
         val index = custom.indexOfFirst { it.id == id }
         if (index < 0) return false
-        custom[index] = Question(id, age, category.trim(), prompt.trim(), options.map { it.trim() }, answerIndex, explanation.trim(), custom = true)
+        custom[index] = custom[index].copy(age = age, category = category.trim(), prompt = prompt.trim(),
+            options = options.map { it.trim() }, answerIndex = answerIndex, explanation = explanation.trim())
         saveCustom(custom)
         reload()
         return true
@@ -275,6 +278,33 @@ class QuestionBank(private val context: Context) {
     fun count(age: Int, categories: Set<String>): Int =
         pick(age, categories, includeDisabled = false).size
 
+    fun eligibleCount(age: Int, categories: Set<String>, grade: Int, difficulty: Int): Int =
+        if (grade == 0 && difficulty == 0) count(age, categories)
+        else strictPool(age, categories, grade, difficulty).size
+
+    private fun strictPool(age: Int, categories: Set<String>, grade: Int, difficulty: Int): List<Question> {
+        val disabled = disabledIds()
+        // The existing bundled bank is classified by age only.
+        return custom().filter { question ->
+            (if (grade == 0) question.age == age else question.grade == grade) &&
+                (difficulty == 0 || question.difficulty == difficulty) &&
+                (categories.isEmpty() || question.category in categories ||
+                    (question.custom && CUSTOM_CATEGORY in categories)) &&
+                question.id !in disabled
+        }
+    }
+
+    @Synchronized
+    fun nextFiltered(
+        age: Int, categories: Set<String>, grade: Int, difficulty: Int,
+        previousId: String?, completedIds: Set<String>, multiple: Boolean,
+    ): Question? {
+        if (grade == 0 && difficulty == 0 && !multiple) return next(age, categories, previousId)
+        val pool = if (grade == 0 && difficulty == 0) pick(age, categories, includeDisabled = false)
+            else strictPool(age, categories, grade, difficulty)
+        return draw(pool.filterNot { it.id in completedIds }, "asked_${age}_${grade}_${difficulty}", previousId)
+    }
+
     @Synchronized
     fun next(age: Int, categories: Set<String> = emptySet(), previousId: String? = null): Question {
         val pool = pick(age, categories, includeDisabled = false).ifEmpty {
@@ -284,8 +314,11 @@ class QuestionBank(private val context: Context) {
                 pick(age, emptySet(), includeDisabled = false).ifEmpty { pick(age, emptySet(), includeDisabled = true) }
             }
         }
-        require(pool.isNotEmpty()) { "No questions for age $age" }
-        val key = "asked_$age"
+        return checkNotNull(draw(pool, "asked_$age", previousId)) { "No questions for age $age" }
+    }
+
+    private fun draw(pool: List<Question>, key: String, previousId: String?): Question? {
+        if (pool.isEmpty()) return null
         val asked = prefs.getStringSet(key, emptySet())!!.toMutableSet()
         val poolIds = pool.map { it.id }.toSet()
         asked.retainAll(poolIds) // asked ids of disabled or deleted questions must not shrink the deck
@@ -414,7 +447,9 @@ class QuestionBank(private val context: Context) {
                     .put("question", q.prompt)
                     .put("options", JSONArray(q.options))
                     .put("answerIndex", q.answerIndex)
-                    .put("explanation", q.explanation),
+                    .put("explanation", q.explanation)
+                    .put("grade", q.grade)
+                    .put("difficulty", q.difficulty),
             )
         }
         val tmp = File(context.filesDir, "custom_questions.json.tmp")
@@ -438,6 +473,8 @@ class QuestionBank(private val context: Context) {
             answerIndex = item.getInt("answerIndex"),
             explanation = item.optString("explanation"),
             custom = custom,
+            grade = item.optInt("grade", 0).takeIf { it in 0..10 } ?: 0,
+            difficulty = item.optInt("difficulty", 0).takeIf { it in 0..5 } ?: 0,
         )
         check(question.answerIndex in options.indices)
         return question

@@ -220,6 +220,18 @@
           <div class="ctl"><select id="age"><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option></select></div>
         </div>
         <div class="set-row">
+          <div class="nm">年级<div class="hint">按年级出题需要导入带年级标签的题目</div></div>
+          <div class="ctl"><select id="grade"><option value="0">按年龄</option><option value="10">幼儿园大班</option><option value="1">小学1年级</option><option value="2">小学2年级</option><option value="3">小学3年级</option><option value="4">小学4年级</option><option value="5">小学5年级</option><option value="6">小学6年级</option><option value="7">初中7年级</option><option value="8">初中8年级</option><option value="9">初中9年级</option></select></div>
+        </div>
+        <div class="set-row">
+          <div class="nm">难度<div class="hint">指定难度需要导入带难度标签的题目</div></div>
+          <div class="ctl"><select id="difficulty"><option value="0">不限</option><option value="1">入门</option><option value="2">基础</option><option value="3">中等</option><option value="4">提高</option><option value="5">挑战</option></select></div>
+        </div>
+        <div class="set-row">
+          <div class="nm">每次答对几道<div class="hint">答错不计数，答够才返回</div></div>
+          <div class="ctl"><input id="questionsPerSession" type="number" min="1" max="10" step="1"></div>
+        </div>
+        <div class="set-row">
           <div class="nm">答题间隔（分钟）</div>
           <div class="ctl"><input id="interval" type="number" min="1" max="1440" step="1"></div>
         </div>
@@ -231,7 +243,7 @@
 
       <div class="card">
         <h3>题目分类</h3>
-        <div class="muted" style="font-size:13px;margin-bottom:10px">一个都不勾选即为全部；数量按所选年龄统计，灰色的分类该年龄暂无题目</div>
+        <div class="muted" style="font-size:13px;margin-bottom:10px">一个都不勾选即为全部；数量按当前年龄或年级及难度统计，灰色分类暂无可用题</div>
         <div id="catList" class="cats"><span class="muted">加载中…</span></div>
       </div>
 
@@ -509,6 +521,9 @@
       $('age').value = s.age;
       $('interval').value = s.interval;
       $('thinkSeconds').value = s.thinkSeconds ?? 5;
+      $('grade').value = s.grade ?? 0;
+      $('difficulty').value = s.difficulty ?? 0;
+      $('questionsPerSession').value = s.questionsPerSession ?? 1;
       $('enabled').checked = s.enabled;
       $('voice').checked = s.voice !== false;
       $('bootQuiz').checked = s.bootQuiz !== false;
@@ -621,10 +636,10 @@
         // a category with no questions at that age cannot be chosen, so the quiz never has to ignore it.
         const [all, atAge] = await Promise.all([
           get('/api/categories'),
-          get('/api/categories?age=' + $('age').value)
+          get('/api/categories?' + new URLSearchParams({age: $('age').value, grade: $('grade').value, difficulty: $('difficulty').value}))
         ]);
         const countAtAge = {};
-        atAge.categories.forEach(c => { countAtAge[c.name] = c.count; });
+        atAge.categories.forEach(c => { countAtAge[c.name] = c.count - c.disabled; });
         const selected = new Set(selectedNames || all.selected || []);
         $('catList').innerHTML = all.categories.length
           ? all.categories.map(c => {
@@ -632,7 +647,7 @@
               const off = n === 0;
               return `<label class="cat" style="${off ? 'opacity:.45;cursor:default' : ''}">` +
                 `<input type="checkbox" value="${esc(c.name)}" ${selected.has(c.name) && !off ? 'checked' : ''} ${off ? 'disabled' : ''}> ` +
-                `${esc(c.name)}（${n}）${off ? ' · 该年龄无题' : ''}</label>`;
+                `${esc(c.name)}（${n}）${off ? ' · 当前筛选无题' : ''}</label>`;
             }).join('')
           : '<span class="muted">暂无分类</span>';
         $('catOptions').innerHTML = all.categories.map(c => `<option value="${esc(c.name)}">`).join('');
@@ -644,7 +659,7 @@
     }
 
     // Switching the child's age re-counts every category: some (历史, 地理, 英语) start later than others.
-    $('age').onchange = () => {
+    $('age').onchange = $('grade').onchange = $('difficulty').onchange = () => {
       const sel = [...document.querySelectorAll('#catList input:checked')].map(i => i.value);
       loadCategories(sel);
     };
@@ -676,6 +691,9 @@
         await api('/api/settings', {
           age: Number($('age').value),
           interval: Number($('interval').value),
+          grade: Number($('grade').value),
+          difficulty: Number($('difficulty').value),
+          questionsPerSession: Number($('questionsPerSession').value),
           thinkSeconds: Number($('thinkSeconds').value),
           enabled: $('enabled').checked,
           voice: $('voice').checked,

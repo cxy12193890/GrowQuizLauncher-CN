@@ -38,6 +38,8 @@ class QuizActivity : Activity() {
     private lateinit var answerButtons: List<Button>
     private var bank: QuestionBank? = null
     private var current: Question? = null
+    private val completedIds = mutableSetOf<String>()
+    private val sessionTarget by lazy { QuizPrefs(this).questionsPerSession }
     private var solved = false
     private var changing = false
     private var lockActive = false
@@ -164,7 +166,11 @@ class QuizActivity : Activity() {
         snapPrefs = QuizPrefs(applicationContext) // the console may switch the watchdog off mid-question
         // A question or a rest is open from now on: a power cut leaves this flag set, and the
         // launcher brings the page back after the next power-on (see MainActivity.onResume).
-        snapPrefs?.quizActive = true
+        snapPrefs?.let { prefs ->
+            if (prefs.quizActive) completedIds.addAll(prefs.completedSessionQuestions)
+            else prefs.completedSessionQuestions = emptySet()
+            prefs.quizActive = true
+        }
         // GrowQuiz: pairs with the alarm's alarm_fired; a fired alarm without this event soon after
         // means the firmware dropped the pop-up (see QuizAlarmReceiver).
         dev.plume.DiagLog.event("quiz_open")
@@ -197,11 +203,7 @@ class QuizActivity : Activity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (solved) {
-            solved = false
-            changing = false
-            bank?.let { showNextQuestion() }
-        }
+        if (!solved && current == null && !changing) bank?.let { showNextQuestion() }
     }
 
     override fun onResume() {
@@ -322,10 +324,26 @@ class QuizActivity : Activity() {
         answerGrid.visibility = View.VISIBLE
         restPanel?.visibility = View.GONE
         val prefs = QuizPrefs(this)
-        val next = quiz.next(prefs.age, prefs.categories, current?.id)
+        val next = quiz.nextFiltered(prefs.age, prefs.categories, prefs.grade, prefs.difficulty,
+            current?.id, completedIds, sessionTarget > 1)
+        if (next == null) {
+            current = null
+            answerGrid.visibility = View.GONE
+            restPanel?.visibility = View.VISIBLE
+            progressText.text = "当前设置下题目不足"
+            questionText.text = "请家长在手机控制台补充题库或调整筛选条件"
+            feedbackText.text = "调整后会自动重新检查"
+            ui.postDelayed({
+                if (!isFinishing && !isDestroyed) {
+                    quiz.reload()
+                    showNextQuestion()
+                }
+            }, 5_000L)
+            return
+        }
         current = next
         val tag = if (prefs.verifyPending) "验证题 · " else ""
-        progressText.text = "$tag${next.age} 岁 · ${next.category} · 答对后即可返回"
+        progressText.text = "$tag${next.category} · 已答对 ${completedIds.size}/$sessionTarget 道"
         questionText.text = next.prompt
         feedbackText.setTextColor(Color.rgb(184, 199, 217))
         answerButtons.forEachIndexed { index, button ->
@@ -477,12 +495,21 @@ class QuizActivity : Activity() {
                 ui.postDelayed({ if (!isFinishing) { changing = false; showNextQuestion() } }, 1_300L)
                 return
             }
-            solved = true
+            completedIds.add(question.id)
+            prefs.completedSessionQuestions = completedIds
+            prefs.wrongStreak = 0
+            prefs.snapWrongs = 0
+            prefs.verifyPending = false
+            solved = completedIds.size >= sessionTarget
             answerButtons[index].backgroundTintList = ColorStateList.valueOf(Color.rgb(46, 158, 107))
             feedbackText.text = "回答正确！${question.explanation}"
             feedbackText.setTextColor(Color.rgb(160, 235, 190))
             // A stage-up celebration needs the screen: hold it a little longer than the usual farewell.
-            ui.postDelayed({ finishAfterCorrect() }, if (stageUp) 3_200L else 1_300L)
+            ui.postDelayed({
+                if (!isFinishing && !isDestroyed) {
+                    if (solved) finishAfterCorrect() else showNextQuestion()
+                }
+            }, if (stageUp) 3_200L else 1_300L)
         } else {
             if (prefs.verifyPending) {
                 // Failed the verification: the snap correct answer was a guess after all. Count it as 3 in a row.
@@ -514,6 +541,7 @@ class QuizActivity : Activity() {
             wrongStreak = 0 // a finished session proves real work: every anti-guess counter resets
             snapWrongs = 0
             verifyPending = false
+            completedSessionQuestions = emptySet()
             quizActive = false // the session ends here; nothing must come back after a power-on
         }
         if (lockActive) {

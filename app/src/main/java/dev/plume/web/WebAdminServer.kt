@@ -504,6 +504,9 @@ object WebAdminServer {
                         .put("initialized", initialized(context))
                         .put("authenticated", true)
                         .put("age", prefs.age)
+                        .put("grade", prefs.grade)
+                        .put("difficulty", prefs.difficulty)
+                        .put("questionsPerSession", prefs.questionsPerSession)
                         .put("interval", prefs.intervalMinutes)
                         .put("enabled", prefs.enabled)
                         .put("voice", prefs.voice)
@@ -596,7 +599,18 @@ object WebAdminServer {
                 val categories = json.optJSONArray("categories")?.let { arr ->
                     (0 until arr.length()).map { arr.getString(it) }.filter { it.isNotBlank() }.toSet()
                 } ?: prefs.categories
-                prefs.save(age, interval, enabled, categories, voice)
+                val grade = json.optInt("grade", if (json.has("grade")) -1 else prefs.grade)
+                val difficulty = json.optInt("difficulty", if (json.has("difficulty")) -1 else prefs.difficulty)
+                val quantity = json.optInt("questionsPerSession", if (json.has("questionsPerSession")) -1 else prefs.questionsPerSession)
+                if (grade !in 0..10 || difficulty !in 0..5 || quantity !in 1..10) {
+                    return reply(out, 400, "application/json; charset=utf-8", error("年级、难度或答题数量无效"))
+                }
+                if (enabled && (grade != 0 || difficulty != 0 || quantity > 1)) {
+                    val available = bank(context).eligibleCount(age, categories, grade, difficulty)
+                    if (available < quantity) return reply(out, 400, "application/json; charset=utf-8",
+                        error("当前条件只有 ${available} 道可用题，需要 ${quantity} 道。请补充带对应标签的题目或调整设置。"))
+                }
+                prefs.save(age, interval, enabled, categories, voice, grade, difficulty, quantity)
                 prefs.bootQuiz = bootQuiz
                 if (json.has("restGuard")) prefs.restGuard = json.optBoolean("restGuard")
                 if (json.has("snapBack")) prefs.snapBack = json.optBoolean("snapBack")
@@ -616,10 +630,14 @@ object WebAdminServer {
                 if (!valid(cookie(headers))) return reply(out, 401, "application/json; charset=utf-8", error("not logged in"))
                 val b = bank(context)
                 val age = query["age"]?.toIntOrNull()
-                val questions = b.list(age = age)
+                val grade = query["grade"]?.toIntOrNull() ?: 0
+                val difficulty = query["difficulty"]?.toIntOrNull() ?: 0
+                val questions = b.list(age = age.takeIf { grade == 0 }).filter {
+                    (grade == 0 || it.grade == grade) && (difficulty == 0 || it.difficulty == difficulty)
+                }
                 val disabled = b.disabledIds()
                 val arr = JSONArray()
-                for (name in b.categories(age)) {
+                for (name in (questions.map { it.category } + listOfNotNull(QuestionBank.CUSTOM_CATEGORY.takeIf { questions.any { it.custom } })).distinct()) {
                     val inCategory = if (name == QuestionBank.CUSTOM_CATEGORY) {
                         questions.filter { it.custom }
                     } else {
@@ -731,6 +749,8 @@ object WebAdminServer {
                             options = List(4) { optionsJson.getString(it) },
                             answerIndex = item.getInt("answerIndex"),
                             explanation = item.optString("explanation"),
+                            grade = item.optInt("grade", 0),
+                            difficulty = item.optInt("difficulty", 0),
                         )
                     }
                 }
@@ -870,6 +890,8 @@ object WebAdminServer {
      * failure, null when the row is clean. Mirrors [QuestionBank]'s own validation.
      */
     private fun validateImport(item: JSONObject): String? {
+        if (item.has("grade") && item.optInt("grade", -1) !in 0..10) return "grade 必须是 0–10 的整数"
+        if (item.has("difficulty") && item.optInt("difficulty", -1) !in 0..5) return "difficulty 必须是 0–5 的整数"
         if (!item.has("age") || item.optInt("age", -1) !in 5..15) return "age 必须是 5–15 的整数"
         if (item.optString("category").trim().isEmpty()) return "category 不能为空"
         if (item.optString("question").trim().isEmpty()) return "question 不能为空"
