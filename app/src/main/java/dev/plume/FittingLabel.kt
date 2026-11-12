@@ -1,6 +1,7 @@
 package dev.plume
 
 import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.text.TextDirectionHeuristics
@@ -39,6 +40,8 @@ internal fun marqueeShift(timeMs: Int, overflowPx: Float, cycle: MarqueeCycle): 
  * tile is selected ([setActive]), then it scrolls slowly to its end and back, with a pause at each end.
  * The box is [box] pixels wide, centred in the view (0: the view's width without its padding).
  */
+// The TV launcher uses the framework theme. Keep its custom label on the framework widget.
+@SuppressLint("AppCompatCustomView")
 internal class FittingLabel @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) : TextView(context, attrs) {
     var box = 0
         set(value) {
