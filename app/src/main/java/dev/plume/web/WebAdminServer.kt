@@ -24,6 +24,7 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Collections
 import java.io.File
+import java.net.BindException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.math.BigInteger
@@ -41,7 +42,6 @@ import org.bouncycastle.asn1.x509.GeneralName
 import org.bouncycastle.asn1.x509.GeneralNames
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 
 /**
@@ -73,49 +73,88 @@ object WebAdminServer {
     private val main = Handler(Looper.getMainLooper())
 
     @Volatile private var server: SSLServerSocket? = null
-    @Volatile private var running = false
+    @Volatile private var activeFingerprint: String? = null
+    private var worker: Thread? = null
+    private val readyCallbacks = mutableListOf<(Boolean) -> Unit>()
 
     val port: Int get() = server?.localPort ?: 8081
 
-    fun start(context: Context) {
-        if (running) return
-        val app = context.applicationContext
-        val ip = localIpAddress() ?: run {
-            dev.plume.DiagLog.event("web_admin_fail", "no LAN IPv4 address")
+    @Synchronized
+    fun start(context: Context, onReady: ((Boolean) -> Unit)? = null) {
+        if (server != null) {
+            onReady?.let { main.post { it(true) } }
             return
         }
-        server = try {
-            createTlsServerSocket(app, ip, 8081)
-        } catch (_: Exception) {
-            try { createTlsServerSocket(app, ip, 0) } catch (second: Exception) {
-                dev.plume.DiagLog.event("web_admin_fail", second.message ?: second.javaClass.simpleName)
-                null
-            }
-        }
-        if (server == null) return
-        running = true
-        Thread({ serve(app) }, "web-admin").start()
+        onReady?.let { readyCallbacks.add(it) }
+        if (worker != null) return
+        val app = context.applicationContext
+        val thread = Thread({ runServer(app) }, "web-admin")
+        worker = thread
+        thread.start()
     }
 
+    private fun runServer(app: Context) {
+        val current = Thread.currentThread()
+        try {
+            val ip = localIpAddress() ?: throw IOException("no LAN IPv4 address")
+            val socket = try {
+                createTlsServerSocket(app, ip, 8081)
+            } catch (_: BindException) {
+                createTlsServerSocket(app, ip, 0)
+            }
+            socket.use {
+                val fingerprint = certificateFingerprint(app, ip)
+                synchronized(this) {
+                    if (worker !== current) return
+                    activeFingerprint = fingerprint
+                    server = socket
+                    notifyReady(true)
+                }
+                serve(app, socket)
+            }
+        } catch (e: Exception) {
+            dev.plume.DiagLog.event("web_admin_fail", e.message ?: e.javaClass.simpleName)
+        } finally {
+            synchronized(this) {
+                if (worker === current) {
+                    server = null
+                    activeFingerprint = null
+                    worker = null
+                    notifyReady(false)
+                }
+            }
+        }
+    }
+
+    private fun notifyReady(ready: Boolean) {
+        val callbacks = readyCallbacks.toList()
+        readyCallbacks.clear()
+        callbacks.forEach { callback -> main.post { callback(ready && server != null) } }
+    }
+
+    @Synchronized
     fun stop() {
-        running = false
+        worker = null
         try {
             server?.close()
         } catch (_: IOException) {
         }
         server = null
+        activeFingerprint = null
+        notifyReady(false)
         sessions.clear()
         synchronized(loginGuards) { loginGuards.clear() }
         synchronized(setupAuthorized) { setupAuthorized.clear() }
     }
 
     fun url(context: Context? = null): String {
-        val address = localIpAddress() ?: return "https://localhost:$port"
-        val base = "https://$address:$port"
+        val socket = server
+        val address = socket?.inetAddress?.hostAddress ?: localIpAddress() ?: return "https://localhost:$port"
+        val base = "https://$address:${socket?.localPort ?: 8081}"
         return if (context != null && !hasPassword(context)) "$base/?setup=$setupToken" else base
     }
 
-    fun certificateFingerprint(context: Context): String? = localIpAddress()?.let { certificateFingerprint(context, it) }
+    fun certificateFingerprint(): String? = activeFingerprint
 
     fun certificateFingerprint(context: Context, ip: String): String? = runCatching {
         val safe = ip.replace(':', '_').replace('%', '_')
@@ -211,9 +250,8 @@ object WebAdminServer {
             val subject = X500Name("CN=$ip")
             val builder = JcaX509v3CertificateBuilder(subject, BigInteger.valueOf(now.time), now, Date(now.time + 10L * 365 * 24 * 60 * 60 * 1000), subject, pair.public)
             builder.addExtension(Extension.subjectAlternativeName, false, GeneralNames(GeneralName(GeneralName.iPAddress, ip)))
-            val provider = BouncyCastleProvider()
-            val cert = JcaX509CertificateConverter().setProvider(provider).getCertificate(
-                builder.build(JcaContentSignerBuilder("SHA256withRSA").setProvider(provider).build(pair.private))
+            val cert = JcaX509CertificateConverter().getCertificate(
+                builder.build(JcaContentSignerBuilder("SHA256withRSA").build(pair.private))
             )
             cert.checkValidity(now)
             cert.verify(pair.public)
@@ -226,8 +264,13 @@ object WebAdminServer {
         tls.init(kmf.keyManagers, null, random)
         val socket = tls.serverSocketFactory.createServerSocket() as SSLServerSocket
         socket.enabledProtocols = socket.supportedProtocols.filter { it == "TLSv1.3" || it == "TLSv1.2" }.toTypedArray()
-        socket.bind(InetSocketAddress(InetAddress.getByName(ip), port))
-        return socket
+        try {
+            socket.bind(InetSocketAddress(InetAddress.getByName(ip), port))
+            return socket
+        } catch (e: IOException) {
+            runCatching { socket.close() }
+            throw e
+        }
     }
 
     private fun storePassword(context: Context, password: String) {
@@ -273,9 +316,8 @@ object WebAdminServer {
 
     @Synchronized private fun clearLoginFailures(ip: String) { loginGuards.remove(ip) }
 
-    private fun serve(context: Context) {
-        val socket = server ?: return
-        while (running) {
+    private fun serve(context: Context, socket: SSLServerSocket) {
+        while (!socket.isClosed) {
             val client = try {
                 socket.accept()
             } catch (_: IOException) {

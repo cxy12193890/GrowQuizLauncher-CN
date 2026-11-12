@@ -7,6 +7,8 @@
     <string name="row_empty_hint">桌面还没有应用 · 打开顶部“所有应用”，长按 OK 键即可添加</string>
     <string name="web_admin_prompt_title">连接同一个 Wi-Fi</string>
     <string name="web_admin_prompt_message">请让手机连接到与这台电视相同的 Wi-Fi，然后在手机浏览器中打开：\n\n%1$s\n\n首次进入需设置管理密码。点击“知道了”进入成长桌面。</string>
+    <string name="web_admin_starting">正在启动手机家长控制台…</string>
+    <string name="web_admin_start_failed">手机家长控制台启动失败。请确认电视已连接局域网，然后从桌面重新打开后台管理。</string>
     <string name="web_admin_prompt_button">知道了</string>
     <string name="web_admin_setup_pending">本机还有初始化未完成：\n%1$s\n用手机打开上面的管理页面，在「运行状态」里可查看并复制对应的修复命令；也可把命令交给手机上的 AI 助手（如 WorkBuddy、豆包）代为执行。</string>
     <string name="override_desc">当 Google TV 主屏幕出现时打开电视答题锁，让主屏幕键回到这里。</string>

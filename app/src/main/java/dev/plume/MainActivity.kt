@@ -747,7 +747,6 @@ class MainActivity : Activity() {
 
     /** Startup hint for the LAN admin console: same Wi-Fi, phone browser, then background this app. */
     private fun showWebAdminPrompt(quizAfterOk: Boolean = false) {
-        dev.plume.web.WebAdminServer.start(this)
         if (webPromptShown) return
         val root = findViewById<ViewGroup>(R.id.root) ?: return
         webPromptShown = true
@@ -797,23 +796,32 @@ class MainActivity : Activity() {
                     setTextColor(Color.WHITE)
                     setTypeface(typeface, Typeface.BOLD)
                 })
-                addView(TextView(this@MainActivity).apply {
-                    text = getString(R.string.web_admin_prompt_message, dev.plume.web.WebAdminServer.url(this@MainActivity)) +
-    dev.plume.web.WebAdminServer.certificateFingerprint(this@MainActivity)?.let { "\n\nTLS 证书 SHA-256：\n$it\n首次访问时，核对指纹后再允许浏览器继续。" }.orEmpty()
+                val message = TextView(this@MainActivity).apply {
+                    setText(R.string.web_admin_starting)
                     textSize = if (small) 16f else 20f
                     setTextColor(Color.rgb(203, 218, 243))
                     setLineSpacing(0f, 1.25f)
                     setPadding(0, dp(16), 0, dp(8))
+                }
+                addView(message)
+                val qr = ImageView(this@MainActivity).apply { visibility = View.GONE }
+                addView(qr, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    gravity = Gravity.CENTER_HORIZONTAL
+                    topMargin = dp(8)
                 })
-                // GrowQuiz: scanning beats typing a LAN address on a phone; the QR opens the console directly.
-                // Only when the TV actually has a LAN address — on localhost there is nothing to scan.
-                if (dev.plume.web.WebAdminServer.hasLanUrl()) {
-                    addView(ImageView(this@MainActivity).apply {
-                        setImageBitmap(qrBitmap(dev.plume.web.WebAdminServer.url(this@MainActivity), dp(150)))
-                    }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                        gravity = Gravity.CENTER_HORIZONTAL
-                        topMargin = dp(8)
-                    })
+                dev.plume.web.WebAdminServer.start(this@MainActivity) { ready ->
+                    if (isDestroyed || !overlay.isAttachedToWindow) return@start
+                    if (!ready) {
+                        message.setText(R.string.web_admin_start_failed)
+                        return@start
+                    }
+                    val url = dev.plume.web.WebAdminServer.url(this@MainActivity)
+                    message.text = getString(R.string.web_admin_prompt_message, url) +
+                        dev.plume.web.WebAdminServer.certificateFingerprint()?.let {
+                            "\n\nTLS 证书 SHA-256：\n$it\n首次访问时，核对指纹后再允许浏览器继续。"
+                        }.orEmpty()
+                    qr.setImageBitmap(qrBitmap(url, dp(150)))
+                    qr.visibility = View.VISIBLE
                 }
                 // GrowQuiz: the permissions and services this TV still misses, in one line each, so the
                 // parents know the console is not only for settings — it carries the repair commands,
