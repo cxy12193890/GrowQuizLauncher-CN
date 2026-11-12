@@ -224,6 +224,10 @@
           <div class="ctl"><select id="grade"><option value="0">按年龄</option><option value="10">幼儿园大班</option><option value="1">小学1年级</option><option value="2">小学2年级</option><option value="3">小学3年级</option><option value="4">小学4年级</option><option value="5">小学5年级</option><option value="6">小学6年级</option><option value="7">初中7年级</option><option value="8">初中8年级</option><option value="9">初中9年级</option></select></div>
         </div>
         <div class="set-row">
+          <div class="nm">册别</div>
+          <div class="ctl"><select id="term"><option value="0">不限册别</option><option value="1">上册</option><option value="2">下册</option></select></div>
+        </div>
+        <div class="set-row">
           <div class="nm">难度<div class="hint">指定难度需要导入带难度标签的题目</div></div>
           <div class="ctl"><select id="difficulty"><option value="0">不限</option><option value="1">入门</option><option value="2">基础</option><option value="3">中等</option><option value="4">提高</option><option value="5">挑战</option></select></div>
         </div>
@@ -242,8 +246,8 @@
       </div>
 
       <div class="card">
-        <h3>题目分类</h3>
-        <div class="muted" style="font-size:13px;margin-bottom:10px">一个都不勾选即为全部；数量按当前年龄或年级及难度统计，灰色分类暂无可用题</div>
+        <h3>科目</h3>
+        <div class="muted" style="font-size:13px;margin-bottom:10px">科目留空即综合出题；题量按当前年级、册别和难度统计。</div>
         <div id="catList" class="cats"><span class="muted">加载中…</span></div>
       </div>
 
@@ -522,6 +526,8 @@
       $('interval').value = s.interval;
       $('thinkSeconds').value = s.thinkSeconds ?? 5;
       $('grade').value = s.grade ?? 0;
+      $('term').value = s.term ?? 0;
+      $('term').disabled = $('grade').value === '0';
       $('difficulty').value = s.difficulty ?? 0;
       $('questionsPerSession').value = s.questionsPerSession ?? 1;
       $('enabled').checked = s.enabled;
@@ -636,7 +642,7 @@
         // a category with no questions at that age cannot be chosen, so the quiz never has to ignore it.
         const [all, atAge] = await Promise.all([
           get('/api/categories'),
-          get('/api/categories?' + new URLSearchParams({age: $('age').value, grade: $('grade').value, difficulty: $('difficulty').value}))
+          get('/api/categories?' + new URLSearchParams({age: $('age').value, grade: $('grade').value, term: $('term').value, difficulty: $('difficulty').value}))
         ]);
         const countAtAge = {};
         atAge.categories.forEach(c => { countAtAge[c.name] = c.count - c.disabled; });
@@ -644,7 +650,7 @@
         $('catList').innerHTML = all.categories.length
           ? all.categories.map(c => {
               const n = countAtAge[c.name] || 0;
-              const off = n === 0;
+              const off = n === 0 && !selected.has(c.name);
               return `<label class="cat" style="${off ? 'opacity:.45;cursor:default' : ''}">` +
                 `<input type="checkbox" value="${esc(c.name)}" ${selected.has(c.name) && !off ? 'checked' : ''} ${off ? 'disabled' : ''}> ` +
                 `${esc(c.name)}（${n}）${off ? ' · 当前筛选无题' : ''}</label>`;
@@ -659,7 +665,9 @@
     }
 
     // Switching the child's age re-counts every category: some (历史, 地理, 英语) start later than others.
-    $('age').onchange = $('grade').onchange = $('difficulty').onchange = () => {
+    $('age').onchange = $('grade').onchange = $('term').onchange = $('difficulty').onchange = () => {
+      $('term').disabled = $('grade').value === '0';
+      if ($('term').disabled) $('term').value = '0';
       const sel = [...document.querySelectorAll('#catList input:checked')].map(i => i.value);
       loadCategories(sel);
     };
@@ -692,6 +700,7 @@
           age: Number($('age').value),
           interval: Number($('interval').value),
           grade: Number($('grade').value),
+          term: Number($('term').value),
           difficulty: Number($('difficulty').value),
           questionsPerSession: Number($('questionsPerSession').value),
           thinkSeconds: Number($('thinkSeconds').value),

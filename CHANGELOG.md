@@ -15,6 +15,11 @@ Write every entry in ASD-STE100 Simplified Technical English:
 Put changes that are not released under `## Unreleased`. Rename that heading to the version number when you release.
 
 
+## 1.15.4
+
+- Filter imported questions by textbook volume.
+- Mix subjects within the selected filters when no subject is selected.
+
 ## 1.15.3
 
 - Select a school grade and difficulty for tagged questions.

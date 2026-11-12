@@ -11,6 +11,7 @@ data class Question(
     val explanation: String,
     /** True for questions written by parents through the admin console, false for the bundled bank. */
     val custom: Boolean = false,
+    val term: Int = 0, // 0 = unclassified, 1 = first volume, 2 = second volume
     val grade: Int = 0, // 0 = unclassified, 10 = kindergarten senior class
     val difficulty: Int = 0, // 0 = unclassified, 1–5 = increasing difficulty
 )

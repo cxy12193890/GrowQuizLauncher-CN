@@ -164,6 +164,7 @@ class QuestionBank(private val context: Context) {
         val options: List<String>,
         val answerIndex: Int,
         val explanation: String,
+        val term: Int = 0,
         val grade: Int = 0,
         val difficulty: Int = 0,
     )
@@ -181,14 +182,14 @@ class QuestionBank(private val context: Context) {
     fun importCustom(batch: List<CustomDraft>, replace: Boolean): ImportResult {
         val old = loadCustom()
         val custom = if (replace) ArrayList<Question>(batch.size) else old.toMutableList()
-        val seen = custom.map { dupKey(it.age, it.category, it.prompt) }.toHashSet()
+        val seen = custom.map { dupKey(it.age, it.category, it.prompt, it.grade, it.term, it.difficulty) }.toHashSet()
         var imported = 0
         for (draft in batch) {
             validateQuestion(draft.age, draft.category, draft.prompt, draft.options, draft.answerIndex)
-            if (!seen.add(dupKey(draft.age, draft.category.trim(), draft.prompt.trim()))) continue
+            if (!seen.add(dupKey(draft.age, draft.category, draft.prompt, draft.grade, draft.term, draft.difficulty))) continue
             val id = "u-" + java.lang.Long.toHexString(System.currentTimeMillis()) + "-" +
                 java.lang.Integer.toHexString(Random.nextInt()) + "-" + imported
-            custom += Question(id, draft.age, draft.category.trim(), draft.prompt.trim(), draft.options.map { it.trim() }, draft.answerIndex, draft.explanation.trim(), custom = true, grade = draft.grade, difficulty = draft.difficulty)
+            custom += Question(id, draft.age, draft.category.trim(), draft.prompt.trim(), draft.options.map { it.trim() }, draft.answerIndex, draft.explanation.trim(), custom = true, term = draft.term, grade = draft.grade, difficulty = draft.difficulty)
             imported++
         }
         if (replace) {
@@ -206,9 +207,8 @@ class QuestionBank(private val context: Context) {
         return ImportResult(imported, batch.size - imported)
     }
 
-    /** Two imported questions are the same when age, category and prompt all match. */
-    private fun dupKey(age: Int, category: String, prompt: String): String =
-        "$age|" + category.trim() + "|" + prompt.trim()
+    private fun dupKey(age: Int, category: String, prompt: String, grade: Int, term: Int, difficulty: Int): List<Any> =
+        listOf(age, category.trim(), prompt.trim(), grade, term, difficulty)
 
     /** Edits a parent-written question in place, keeping its id so stats and disabled state survive. */
     @Synchronized
@@ -278,15 +278,16 @@ class QuestionBank(private val context: Context) {
     fun count(age: Int, categories: Set<String>): Int =
         pick(age, categories, includeDisabled = false).size
 
-    fun eligibleCount(age: Int, categories: Set<String>, grade: Int, difficulty: Int): Int =
-        if (grade == 0 && difficulty == 0) count(age, categories)
-        else strictPool(age, categories, grade, difficulty).size
+    fun eligibleCount(age: Int, categories: Set<String>, grade: Int, difficulty: Int, term: Int): Int =
+        if (grade == 0 && difficulty == 0 && term == 0) count(age, categories)
+        else strictPool(age, categories, grade, difficulty, term).size
 
-    private fun strictPool(age: Int, categories: Set<String>, grade: Int, difficulty: Int): List<Question> {
+    private fun strictPool(age: Int, categories: Set<String>, grade: Int, difficulty: Int, term: Int): List<Question> {
         val disabled = disabledIds()
         // The existing bundled bank is classified by age only.
         return custom().filter { question ->
             (if (grade == 0) question.age == age else question.grade == grade) &&
+                (term == 0 || question.term == term) &&
                 (difficulty == 0 || question.difficulty == difficulty) &&
                 (categories.isEmpty() || question.category in categories ||
                     (question.custom && CUSTOM_CATEGORY in categories)) &&
@@ -297,12 +298,12 @@ class QuestionBank(private val context: Context) {
     @Synchronized
     fun nextFiltered(
         age: Int, categories: Set<String>, grade: Int, difficulty: Int,
-        previousId: String?, completedIds: Set<String>, multiple: Boolean,
+        previousId: String?, completedIds: Set<String>, multiple: Boolean, term: Int,
     ): Question? {
-        if (grade == 0 && difficulty == 0 && !multiple) return next(age, categories, previousId)
-        val pool = if (grade == 0 && difficulty == 0) pick(age, categories, includeDisabled = false)
-            else strictPool(age, categories, grade, difficulty)
-        return draw(pool.filterNot { it.id in completedIds }, "asked_${age}_${grade}_${difficulty}", previousId)
+        if (grade == 0 && difficulty == 0 && term == 0 && !multiple) return next(age, categories, previousId)
+        val pool = if (grade == 0 && difficulty == 0 && term == 0) pick(age, categories, includeDisabled = false)
+            else strictPool(age, categories, grade, difficulty, term)
+        return draw(pool.filterNot { it.id in completedIds }, "asked_${age}_${grade}_${difficulty}" + if (term == 0) "" else "_term_$term", previousId)
     }
 
     @Synchronized
@@ -449,6 +450,7 @@ class QuestionBank(private val context: Context) {
                     .put("answerIndex", q.answerIndex)
                     .put("explanation", q.explanation)
                     .put("grade", q.grade)
+                    .put("term", q.term)
                     .put("difficulty", q.difficulty),
             )
         }
@@ -473,6 +475,7 @@ class QuestionBank(private val context: Context) {
             answerIndex = item.getInt("answerIndex"),
             explanation = item.optString("explanation"),
             custom = custom,
+            term = item.optInt("term", 0).takeIf { it in 0..2 } ?: 0,
             grade = item.optInt("grade", 0).takeIf { it in 0..10 } ?: 0,
             difficulty = item.optInt("difficulty", 0).takeIf { it in 0..5 } ?: 0,
         )

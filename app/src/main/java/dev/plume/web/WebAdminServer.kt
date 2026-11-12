@@ -505,6 +505,7 @@ object WebAdminServer {
                         .put("authenticated", true)
                         .put("age", prefs.age)
                         .put("grade", prefs.grade)
+                        .put("term", prefs.term)
                         .put("difficulty", prefs.difficulty)
                         .put("questionsPerSession", prefs.questionsPerSession)
                         .put("interval", prefs.intervalMinutes)
@@ -601,16 +602,18 @@ object WebAdminServer {
                 } ?: prefs.categories
                 val grade = json.optInt("grade", if (json.has("grade")) -1 else prefs.grade)
                 val difficulty = json.optInt("difficulty", if (json.has("difficulty")) -1 else prefs.difficulty)
+                val term = json.optInt("term", if (json.has("term")) -1 else prefs.term)
                 val quantity = json.optInt("questionsPerSession", if (json.has("questionsPerSession")) -1 else prefs.questionsPerSession)
-                if (grade !in 0..10 || difficulty !in 0..5 || quantity !in 1..10) {
-                    return reply(out, 400, "application/json; charset=utf-8", error("年级、难度或答题数量无效"))
+                if (grade !in 0..10 || difficulty !in 0..5 || term !in 0..2 || quantity !in 1..10) {
+                    return reply(out, 400, "application/json; charset=utf-8", error("年级、册别、难度或答题数量无效"))
                 }
-                if (enabled && (grade != 0 || difficulty != 0 || quantity > 1)) {
-                    val available = bank(context).eligibleCount(age, categories, grade, difficulty)
+                if (term != 0 && grade == 0) return reply(out, 400, "application/json; charset=utf-8", error("请选择年级后再选上下册"))
+                if (enabled && (grade != 0 || difficulty != 0 || term != 0 || quantity > 1)) {
+                    val available = bank(context).eligibleCount(age, categories, grade, difficulty, term)
                     if (available < quantity) return reply(out, 400, "application/json; charset=utf-8",
                         error("当前条件只有 ${available} 道可用题，需要 ${quantity} 道。请补充带对应标签的题目或调整设置。"))
                 }
-                prefs.save(age, interval, enabled, categories, voice, grade, difficulty, quantity)
+                prefs.save(age, interval, enabled, categories, voice, grade, difficulty, quantity, term)
                 prefs.bootQuiz = bootQuiz
                 if (json.has("restGuard")) prefs.restGuard = json.optBoolean("restGuard")
                 if (json.has("snapBack")) prefs.snapBack = json.optBoolean("snapBack")
@@ -632,8 +635,10 @@ object WebAdminServer {
                 val age = query["age"]?.toIntOrNull()
                 val grade = query["grade"]?.toIntOrNull() ?: 0
                 val difficulty = query["difficulty"]?.toIntOrNull() ?: 0
+                val term = query["term"]?.toIntOrNull() ?: 0
                 val questions = b.list(age = age.takeIf { grade == 0 }).filter {
-                    (grade == 0 || it.grade == grade) && (difficulty == 0 || it.difficulty == difficulty)
+                    (grade == 0 || it.grade == grade) && (term == 0 || it.term == term) &&
+                        (difficulty == 0 || it.difficulty == difficulty)
                 }
                 val disabled = b.disabledIds()
                 val arr = JSONArray()
@@ -750,6 +755,7 @@ object WebAdminServer {
                             answerIndex = item.getInt("answerIndex"),
                             explanation = item.optString("explanation"),
                             grade = item.optInt("grade", 0),
+                            term = item.optInt("term", 0),
                             difficulty = item.optInt("difficulty", 0),
                         )
                     }
@@ -890,6 +896,8 @@ object WebAdminServer {
      * failure, null when the row is clean. Mirrors [QuestionBank]'s own validation.
      */
     private fun validateImport(item: JSONObject): String? {
+        if (item.has("term") && item.optInt("term", -1) !in 0..2) return "term 必须是 0（未标注）、1（上册）或 2（下册）"
+        if (item.optInt("term", 0) != 0 && item.optInt("grade", 0) == 0) return "指定上下册时必须填写年级"
         if (item.has("grade") && item.optInt("grade", -1) !in 0..10) return "grade 必须是 0–10 的整数"
         if (item.has("difficulty") && item.optInt("difficulty", -1) !in 0..5) return "difficulty 必须是 0–5 的整数"
         if (!item.has("age") || item.optInt("age", -1) !in 5..15) return "age 必须是 5–15 的整数"

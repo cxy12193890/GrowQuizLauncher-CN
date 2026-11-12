@@ -325,7 +325,7 @@ class QuizActivity : Activity() {
         restPanel?.visibility = View.GONE
         val prefs = QuizPrefs(this)
         val next = quiz.nextFiltered(prefs.age, prefs.categories, prefs.grade, prefs.difficulty,
-            current?.id, completedIds, sessionTarget > 1)
+            current?.id, completedIds, sessionTarget > 1, prefs.term)
         if (next == null) {
             current = null
             answerGrid.visibility = View.GONE
